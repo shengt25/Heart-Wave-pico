@@ -1,20 +1,25 @@
 class TextView:
-    def __init__(self, display, x: int, y: int):
+    def __init__(self, display, x: int, y: int, text=""):
         self._display = display
         self._x = x
         self._y = y
-        self._last_text = ""
+        self._text = text
 
-    def show(self, text: str):
-        self._display.text(text, self._x, self._y)
-        self._last_text = text
+    def show(self):
+        self._display.text(self._text, self._x, self._y)
 
     def clear(self):
-        self._display.text(self._last_text, self._x, self._y, 0)
+        self._display.text(self._text, self._x, self._y, 0)
+
+    def update_text(self, text, auto_show=True):
+        self._text = text
+        if auto_show:
+            self.show()
 
 
+# todo preliminary implementation
 class OptionView:
-    def __init__(self, display, options: list[str], spacing=2, x=0, y=0):
+    def __init__(self, display, options: list[str], spacing=2, x=0, y=0, debug=False):
         self._display = display
         self._options = options
         self._x = x
@@ -22,14 +27,48 @@ class OptionView:
         self._spacing = spacing
         self._selected_index = 0
         self._font_size = 6
+        self._changed = True
+        self._debug = debug
 
-    def show(self):
+    # todo: boundary and scrolling
+
+    def _clear_old(self):
+        if self._debug:
+            print(f"clear, id: {self._selected_index}")
         for i, option in enumerate(self._options):
             if i == self._selected_index:
-                self._display.text(">" + option, self._x, self._y + i * self._font_size * self._spacing)
+                self._display.text(">" + option, self._x, self._y + i * self._font_size * self._spacing, 0)
             else:
-                self._display.text(" " + option, self._x, self._y + i * self._font_size * self._spacing)
-        self._display.show()
+                self._display.text(" " + option, self._x, self._y + i * self._font_size * self._spacing, 0)
+
+    def show(self):
+        if self._changed:
+            if self._debug:
+                print(f"show, id=: {self._selected_index}")
+            for i, option in enumerate(self._options):
+                if i == self._selected_index:
+                    self._display.text(">" + option, self._x, self._y + i * self._font_size * self._spacing)
+                else:
+                    self._display.text(" " + option, self._x, self._y + i * self._font_size * self._spacing)
+            self._display.show()
+            self._changed = False
+
+    def next(self, auto_show=True):
+        self._clear_old()
+        self._selected_index += 1
+        self._changed = True
+        if auto_show:
+            self.show()
+
+    def previous(self, auto_show=True):
+        self._clear_old()
+        self._selected_index -= 1
+        self._changed = True
+        if auto_show:
+            self.show()
+
+    def enter(self):
+        return self._selected_index
 
 
 class GraphView:

@@ -1,5 +1,5 @@
 import time
-from hardware import display_init, RotaryEncoder, Event, Value
+from hardware import init_display, RotaryEncoder, Event, Value
 from ui import TextView, OptionView, GraphView
 from common import State
 
@@ -23,8 +23,8 @@ class MainMenu:
         self.option_view.show()
 
     def _select_menu(self):
-        status, value = self.rotary_encoder.on_rotate()
-        if status == Event.EVENT:
+        event, value = self.rotary_encoder.on_rotate()
+        if event == Event.EVENT:
             if value == Value.CLOCKWISE:
                 self.option_view.next()
             elif value == Value.COUNTER_CLOCKWISE:
@@ -32,8 +32,8 @@ class MainMenu:
             # self.option_list.show() # no need when auto show enabled
 
     def _next(self):
-        status, value = self.rotary_encoder.on_press()
-        if status == Event.EVENT and value == Value.PRESS:
+        event, value = self.rotary_encoder.on_press()
+        if event == Event.EVENT and value == Value.PRESS:
             selected_index = self.option_view.get_selected_index()
             if selected_index == 0:
                 return State.HR

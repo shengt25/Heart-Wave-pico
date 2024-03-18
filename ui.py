@@ -17,7 +17,6 @@ class TextView:
             self.show()
 
 
-# todo preliminary implementation
 class OptionView:
     def __init__(self, display, options: list[str], spacing=2, x=0, y=0, debug=False):
         self._display = display
@@ -31,6 +30,10 @@ class OptionView:
         self._debug = debug
 
     # todo: boundary and scrolling
+    def init(self, options=None):
+        if options is not None:
+            self._options = options
+        self._changed = True
 
     def _clear_old(self):
         if self._debug:
@@ -67,7 +70,7 @@ class OptionView:
         if auto_show:
             self.show()
 
-    def enter(self):
+    def get_selected_index(self):
         return self._selected_index
 
 
@@ -81,18 +84,27 @@ class GraphView:
         self._box_h = box_h
         self._show_box = show_box
         self._debug = debug
+        self._speed = speed
 
         # init
-        self._x = self._box_x + 1
         self._range_h_default = 36000
         self._range_l_default = 28000
+        self._x = self._box_x + 1
         self._range_h = self._range_h_default
         self._range_l = self._range_l_default
         self._range_h_temp = self._range_h_default
         self._range_l_temp = self._range_l_default
         self._last_x = -1
         self._last_y = -1
-        self._speed = speed
+
+    def init(self):
+        self._x = self._box_x + 1
+        self._range_h = self._range_h_default
+        self._range_l = self._range_l_default
+        self._range_h_temp = self._range_h_default
+        self._range_l_temp = self._range_l_default
+        self._last_x = -1
+        self._last_y = -1
 
     def _g_clean_ahead(self):
         # function usage: fill_rect(x, y, w, h, color)

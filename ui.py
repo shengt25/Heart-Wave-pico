@@ -23,49 +23,73 @@ class OptionView:
         self._options = options
         self._x = x
         self._y = y
-        self._spacing = spacing
-        self._selected_index = 0
+        self._spacing = spacing - 1
         self._font_size = 6
-        self._changed = True
         self._debug = debug
+        self._max_index = len(self._options) - 1
 
-    # todo: boundary and scrolling
-    def init(self, options=None):
-        if options is not None:
-            self._options = options
+        # dynamic init
+        self._changed = None
+        self._selected_index = None
+        self._view_range = None
+        self.init()
+
+    # todo: scrolling
+    def init(self):
         self._changed = True
+        self._selected_index = 0
+        self._view_range = (0, int(self._display.get_height() / (self._font_size + self._spacing)) - 1)
+        print(self._view_range)
+
+    def update_options(self, options):
+        self._options = options
+        self._max_index = len(self._options) - 1
 
     def _clear_old(self):
-        if self._debug:
-            print(f"clear, id: {self._selected_index}")
-        for i, option in enumerate(self._options):
-            if i == self._selected_index:
-                self._display.text(">" + option, self._x, self._y + i * self._font_size * self._spacing, 0)
-            else:
-                self._display.text(" " + option, self._x, self._y + i * self._font_size * self._spacing, 0)
+        self._display.fill_rect(self._x, self._y, 128, (self._font_size + self._spacing) * len(self._options), 0)
+
+    def _draw_scroll_bar(self):
+        self._display.line(120, 10, 120, 54, 1)
+        self._display.fill_rect(120, 0, 8, 64, 1)
 
     def show(self):
         if self._changed:
-            if self._debug:
-                print(f"show, id=: {self._selected_index}")
-            for i, option in enumerate(self._options):
-                if i == self._selected_index:
-                    self._display.text(">" + option, self._x, self._y + i * self._font_size * self._spacing)
+            print(f"show, id=: {self._selected_index}") if self._debug else None
+            range_l, range_h = self._view_range
+            for print_index in range(range_l, range_h + 1):
+                if print_index == self._selected_index:
+                    self._display.text(">" + self._options[print_index], self._x,
+                                       self._y + (print_index - range_l) * (self._font_size + self._spacing))
                 else:
-                    self._display.text(" " + option, self._x, self._y + i * self._font_size * self._spacing)
+                    self._display.text(" " + self._options[print_index], self._x,
+                                       self._y + (print_index - range_l) * (self._font_size + self._spacing))
             self._display.show()
             self._changed = False
 
     def next(self, auto_show=True):
         self._clear_old()
-        self._selected_index += 1
+        if self._selected_index + 1 <= self._max_index:
+            self._selected_index += 1
+
+        range_l, range_h = self._view_range
+        if self._selected_index > range_h:
+            self._view_range = (range_l + 1, range_h + 1)
+            print(self._view_range)
+
         self._changed = True
         if auto_show:
             self.show()
 
     def previous(self, auto_show=True):
         self._clear_old()
-        self._selected_index -= 1
+        if self._selected_index - 1 >= 0:
+            self._selected_index -= 1
+
+        range_l, range_h = self._view_range
+        if self._selected_index < range_l:
+            self._view_range = (range_l - 1, range_h - 1)
+            print(self._view_range)
+
         self._changed = True
         if auto_show:
             self.show()
@@ -85,17 +109,18 @@ class GraphView:
         self._show_box = show_box
         self._debug = debug
         self._speed = speed
-
         # init
         self._range_h_default = 36000
         self._range_l_default = 28000
-        self._x = self._box_x + 1
-        self._range_h = self._range_h_default
-        self._range_l = self._range_l_default
-        self._range_h_temp = self._range_h_default
-        self._range_l_temp = self._range_l_default
-        self._last_x = -1
-        self._last_y = -1
+        # dynamic init
+        self._x = None
+        self._range_h = None
+        self._range_l = None
+        self._range_h_temp = None
+        self._range_l_temp = None
+        self._last_x = None
+        self._last_y = None
+        self.init()
 
     def init(self):
         self._x = self._box_x + 1

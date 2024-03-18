@@ -84,10 +84,21 @@ class RotaryEncoder:
         return status, value
 
 
-def display_init():
-    OLED_SDA = 14  # Data
-    OLED_SCL = 15  # Clock
-    OLED_WIDTH = 128
-    OLED_HEIGHT = 64
-    i2c = I2C(1, scl=Pin(OLED_SCL), sda=Pin(OLED_SDA), freq=400000)
-    return SSD1306_I2C(OLED_WIDTH, OLED_HEIGHT, i2c)
+class MySSD1306_I2C(SSD1306_I2C):
+    def __init__(self, width, height, i2c):
+        self.width = width
+        self.height = height
+        super().__init__(width, height, i2c)
+
+    def get_height(self):
+        return self.height
+
+    def get_width(self):
+        return self.width
+
+
+def init_display(sda=14, scl=15, width=128, height=64):
+    # https://docs.micropython.org/en/latest/esp8266/tutorial/ssd1306.html
+    # https://docs.micropython.org/en/latest/library/framebuf.html
+    i2c = I2C(1, scl=Pin(scl), sda=Pin(sda), freq=400000)
+    return MySSD1306_I2C(width, height, i2c)

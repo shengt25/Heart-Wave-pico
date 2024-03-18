@@ -4,7 +4,7 @@ from HRV import HRV
 from MainMenu import MainMenu
 from Kubios import Kubios
 from History import History
-from hardware import display_init, RotaryEncoder, HeartSensor
+from hardware import init_display, RotaryEncoder, HeartSensor
 from common import State
 
 
@@ -27,7 +27,7 @@ class Manager:
 
 
 if __name__ == "__main__":
-    display = display_init()
+    display = init_display()
     rotary_encoder = RotaryEncoder(debounce_ms=2)
     heart_sensor = HeartSensor()
 

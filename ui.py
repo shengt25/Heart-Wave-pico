@@ -1,3 +1,6 @@
+import array
+
+
 class TextView:
     def __init__(self, display, x: int, y: int, text=""):
         self._display = display
@@ -18,39 +21,54 @@ class TextView:
 
 
 class OptionView:
-    def __init__(self, display, options: list[str], spacing=2, x=0, y=0, debug=False):
+    def __init__(self, display, options: list[str], spacing=2, y=0, debug=False):
         self._display = display
         self._options = options
-        self._x = x
         self._y = y
         self._spacing = spacing - 1
         self._font_size = 6
         self._debug = debug
         self._max_index = len(self._options) - 1
+        self._arrow_h = array.array('H', [3, 0, 0, 5, 6, 5])
+        self._arrow_l = array.array('H', [0, 0, 6, 0, 3, 5])
 
         # dynamic init
         self._changed = None
         self._selected_index = None
         self._view_range = None
+        self._slider_height = None
         self.init()
 
-    # todo: scrolling
     def init(self):
         self._changed = True
         self._selected_index = 0
-        self._view_range = (0, int(self._display.get_height() / (self._font_size + self._spacing)) - 1)
+        view_count, total_count = self._get_view_range()
+        self._view_range = (0, view_count - 1)
+        self._slider_height = int(view_count / total_count * (40 - 5) + 5)
         print(self._view_range)
+
+    def _get_view_range(self):
+        view_count = int((self._display.get_height() - self._y) / (self._font_size + self._spacing))
+        total_count = len(self._options)
+        return view_count, total_count
 
     def update_options(self, options):
         self._options = options
         self._max_index = len(self._options) - 1
 
     def _clear_old(self):
-        self._display.fill_rect(self._x, self._y, 128, (self._font_size + self._spacing) * len(self._options), 0)
+        self._display.fill_rect(0, self._y, 128, (self._font_size + self._spacing) * len(self._options), 0)
 
     def _draw_scroll_bar(self):
-        self._display.line(120, 10, 120, 54, 1)
-        self._display.fill_rect(120, 0, 8, 64, 1)
+        range_l, range_h = self._view_range
+        view_count, total_count = self._get_view_range()
+        slider_y = round(range_l / (total_count - view_count) * (55 - self._slider_height - self._y - 9) + self._y + 9)
+        self._display.line(124, self._y + 9, 124, 54, 1)
+        self._display.fill_rect(123, slider_y, 3, self._slider_height, 1)
+        if range_l != 0:  # draw arrow when not on first page
+            self._display.poly(121, self._y, self._arrow_h, 1, 1)
+        if range_l != total_count - view_count:  # draw arrow when on last page
+            self._display.poly(121, 58, self._arrow_l, 1, 1)
 
     def show(self):
         if self._changed:
@@ -58,11 +76,14 @@ class OptionView:
             range_l, range_h = self._view_range
             for print_index in range(range_l, range_h + 1):
                 if print_index == self._selected_index:
-                    self._display.text(">" + self._options[print_index], self._x,
+                    self._display.text(">" + self._options[print_index], 0,
                                        self._y + (print_index - range_l) * (self._font_size + self._spacing))
                 else:
-                    self._display.text(" " + self._options[print_index], self._x,
+                    self._display.text(" " + self._options[print_index], 0,
                                        self._y + (print_index - range_l) * (self._font_size + self._spacing))
+            view_count, total_count = self._get_view_range()
+            if view_count < len(self._options):  # draw scroll bar when one page is not enough
+                self._draw_scroll_bar()
             self._display.show()
             self._changed = False
 

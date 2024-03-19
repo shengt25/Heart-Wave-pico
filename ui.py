@@ -8,9 +8,9 @@ class TextView:
         self._y = y
         self._text = text
         self._changed = None
-        self.refresh()
+        self.re_init()
 
-    def refresh(self):
+    def re_init(self):
         self._changed = True
 
     def show(self):
@@ -22,7 +22,7 @@ class TextView:
     def update_text(self, text, auto_update=True):
         self._text = text
         if auto_update:
-            self.refresh()
+            self.re_init()
 
 
 class ListView:
@@ -41,9 +41,9 @@ class ListView:
         self._selected_index = None
         self._view_index_range = None
         self._slider_height = None
-        self.refresh()
+        self.re_init()
 
-    def refresh(self):
+    def re_init(self):
         self._changed = True
         self._selected_index = 0
         row_per_page = self._get_view_range()
@@ -60,7 +60,7 @@ class ListView:
 
     def update_items(self, items):
         self._items = items
-        self.refresh()
+        self.re_init()
 
     def _clear_old(self):
         self._display.fill_rect(0, self._y, 128, 64, 0)
@@ -150,9 +150,9 @@ class GraphView:
         self._range_l_temp = None
         self._last_x = None
         self._last_y = None
-        self.refresh()
+        self.re_init()
 
-    def refresh(self):
+    def re_init(self):
         self._x = self._box_x + 1
         self._range_h = self._range_h_default
         self._range_l = self._range_l_default

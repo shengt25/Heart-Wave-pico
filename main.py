@@ -4,7 +4,7 @@ from HRV import HRV
 from MainMenu import MainMenu
 from Kubios import Kubios
 from History import History
-from hardware import init_display, RotaryEncoder, HeartSensor
+from hardware import init_display, RotaryEncoder, HeartSensor, EventManager
 from common import State
 
 
@@ -28,11 +28,12 @@ class StateManager:
 
 if __name__ == "__main__":
     display = init_display()
-    rotary_encoder = RotaryEncoder(debounce_ms=2)
+    event_manager = EventManager()
+    rotary_encoder = RotaryEncoder(event_manager=event_manager, debounce_ms=2)
     heart_sensor = HeartSensor()
 
-    states_dict = {State.MENU: MainMenu(display, rotary_encoder, debug=True),
-                   State.HR: HR(display, rotary_encoder, heart_sensor, debug=True),
+    states_dict = {State.MENU: MainMenu(display, rotary_encoder, event_manager, debug=True),
+                   State.HR: HR(display, rotary_encoder, heart_sensor, event_manager, debug=True),
                    State.HRV: HRV(display, rotary_encoder),
                    State.KUBIOS: Kubios(display, rotary_encoder),
                    State.HISTORY: History(display, rotary_encoder)}

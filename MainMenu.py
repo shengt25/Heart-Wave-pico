@@ -1,40 +1,37 @@
 import time
-from hardware import init_display, RotaryEncoder, Event, Value
+from hardware import init_display, RotaryEncoder, EventTypes
 from ui import TextView, ListView, GraphView
 from common import State
 
 
 class MainMenu:
-    def __init__(self, display, rotary_encoder, debug=False):
+    def __init__(self, display, rotary_encoder, event_manager, debug=False):
         # init hardware
-        self.display = display
-        self.rotary_encoder = rotary_encoder
+        self._display = display
+        self._rotary_encoder = rotary_encoder
+        self._event_manager = event_manager
         # init ui
-        self.list_view = ListView(self.display, ["HR Measure",
+        self._list_view = ListView(self._display, ["HR Measure",
                                                    "HRV Analysis",
                                                    "Kubios Analysis",
                                                    "History"], debug=debug)
-        self.debug = debug
+        self._debug = debug
 
     def enter(self):
-        print("MainMenu enter") if self.debug else None
-        self.display.fill(0)
-        self.list_view.refresh()
-        self.list_view.show()
+        print("MainMenu enter") if self._debug else None
+        self._display.fill(0)
+        self._list_view.re_init()
+        self._list_view.show()
 
     def _select_menu(self):
-        event, value = self.rotary_encoder.on_rotate()
-        if event == Event.EVENT:
-            if value == Value.CLOCKWISE:
-                self.list_view.select_next()
-            elif value == Value.COUNTER_CLOCKWISE:
-                self.list_view.select_previous()
-            # self.option_list.show() # no need when auto show enabled
+        if self._event_manager.pop(EventTypes.ENCODER_CLOCKWISE):
+            self._list_view.select_next()
+        elif self._event_manager.pop(EventTypes.ENCODER_COUNTER_CLOCKWISE):
+            self._list_view.select_previous()
 
     def _next_state(self):
-        event, value = self.rotary_encoder.on_press()
-        if event == Event.EVENT and value == Value.PRESS:
-            selected_index = self.list_view.get_selected_index()
+        if self._event_manager.pop(EventTypes.ENCODER_PRESS):
+            selected_index = self._list_view.get_selected_index()
             if selected_index == 0:
                 return State.HR
             elif selected_index == 1:

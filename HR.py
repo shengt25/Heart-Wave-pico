@@ -13,12 +13,12 @@ class HR:
         self.graph_view = GraphView(self.display)
         self.debug = debug
 
-    def init(self):
+    def enter(self):
         print("HR enter") if self.debug else None
         self.display.fill(0)
-        self.graph_view.init()
+        self.graph_view.refresh()
 
-    def _next(self):
+    def _next_state(self):
         event, value = self.rotary_encoder.on_press()
         if event == Event.EVENT and value == Value.PRESS:
             return State.MENU
@@ -28,4 +28,4 @@ class HR:
     def execute(self):
         event, value = self.heart_sensor.read()
         self.graph_view.show(value)
-        return self._next()
+        return self._next_state()

@@ -7,17 +7,22 @@ class TextView:
         self._x = x
         self._y = y
         self._text = text
+        self._changed = None
+        self.refresh()
+
+    def refresh(self):
+        self._changed = True
 
     def show(self):
-        self._display.text(self._text, self._x, self._y)
+        self._display.text(self._text, self._x, self._y) if self._changed else None
 
     def clear(self):
         self._display.text(self._text, self._x, self._y, 0)
 
-    def update_text(self, text, auto_show=True):
+    def update_text(self, text, auto_update=True):
         self._text = text
-        if auto_show:
-            self.show()
+        if auto_update:
+            self.refresh()
 
 
 class ListView:
@@ -36,9 +41,9 @@ class ListView:
         self._selected_index = None
         self._view_index_range = None
         self._slider_height = None
-        self.init()
+        self.refresh()
 
-    def init(self):
+    def refresh(self):
         self._changed = True
         self._selected_index = 0
         row_per_page = self._get_view_range()
@@ -55,7 +60,7 @@ class ListView:
 
     def update_items(self, items):
         self._items = items
-        self.init()
+        self.refresh()
 
     def _clear_old(self):
         self._display.fill_rect(0, self._y, 128, 64, 0)
@@ -75,7 +80,7 @@ class ListView:
     def show(self):
         if self._changed:
             view_index_l, view_index_h = self._view_index_range
-            view_index_h = min(view_index_h, len(self._items) -1)  # limit the upper bound one page can show
+            view_index_h = min(view_index_h, len(self._items) - 1)  # limit the upper bound one page can show
             print(f"selected: {self._selected_index}") if self._debug else None
             for print_index in range(view_index_l, view_index_h + 1):
                 print(f"showing index: {print_index} / {len(self._items) - 1}") if self._debug else None
@@ -91,7 +96,7 @@ class ListView:
             self._display.show()
             self._changed = False
 
-    def next(self, auto_show=True):
+    def select_next(self, auto_show=True):
         self._clear_old()
         if self._selected_index + 1 <= len(self._items) - 1:
             self._selected_index += 1
@@ -105,7 +110,7 @@ class ListView:
         if auto_show:
             self.show()
 
-    def previous(self, auto_show=True):
+    def select_previous(self, auto_show=True):
         self._clear_old()
         if self._selected_index - 1 >= 0:
             self._selected_index -= 1
@@ -145,9 +150,9 @@ class GraphView:
         self._range_l_temp = None
         self._last_x = None
         self._last_y = None
-        self.init()
+        self.refresh()
 
-    def init(self):
+    def refresh(self):
         self._x = self._box_x + 1
         self._range_h = self._range_h_default
         self._range_l = self._range_l_default
@@ -169,8 +174,8 @@ class GraphView:
                                     0)
             self._display.fill_rect(self._box_x + 1, self._box_y + 1, exceed_width - 2, self._box_h - 2, 0)
 
-    def _g_update_range(self, value, new=False):
-        if new:
+    def _g_update_range(self, value, new_period=False):
+        if new_period:
             # apply new range every new graph
             self._range_h = self._range_h_temp
             self._range_l = self._range_l_temp
@@ -208,7 +213,7 @@ class GraphView:
             self._x = self._box_x + 1
             self._last_x = -1
             self._last_y = -1
-            self._g_update_range(value, new=True)
+            self._g_update_range(value, new_period=True)
         # before drawing
         self._g_clean_ahead()
         normalized_value = self._g_normalize(value)
@@ -235,3 +240,8 @@ class GraphView:
         if self._show_box:
             self._g_draw_box()
         self._draw_graph(value)
+
+
+class MainMenuView:
+    pass
+    # todo: implement the main menu view with icons and text

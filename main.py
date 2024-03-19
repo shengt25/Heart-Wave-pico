@@ -8,22 +8,22 @@ from hardware import init_display, RotaryEncoder, HeartSensor
 from common import State
 
 
-class Manager:
+class StateManager:
     def __init__(self, states_dict):
         self.states_dict = states_dict
 
         # init whole system
-        self.current_state = State.MENU
-        self.state = self.states_dict[State.MENU]
-        self.state.init()
+        self._current_state_code = None
+        self._state = None
+        self._next_state_code = State.MENU
 
     def handle_state(self):
-        time.sleep_ms(5)
-        next_state = self.state.execute()
-        if self.current_state != next_state:
-            self.current_state = next_state
-            self.state = self.states_dict[next_state]
-            self.state.init()
+        time.sleep_ms(1)
+        if self._current_state_code != self._next_state_code:
+            self._current_state_code = self._next_state_code
+            self._state = self.states_dict[self._next_state_code]
+            self._state.enter()
+        self._next_state_code = self._state.execute()
 
 
 if __name__ == "__main__":
@@ -36,7 +36,7 @@ if __name__ == "__main__":
                    State.HRV: HRV(display, rotary_encoder),
                    State.KUBIOS: Kubios(display, rotary_encoder),
                    State.HISTORY: History(display, rotary_encoder)}
-    state_manager = Manager(states_dict)
+    state_manager = StateManager(states_dict)
 
     while True:
         state_manager.handle_state()

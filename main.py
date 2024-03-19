@@ -32,11 +32,11 @@ if __name__ == "__main__":
     rotary_encoder = RotaryEncoder(event_manager=event_manager, debounce_ms=2)
     heart_sensor = HeartSensor()
 
-    states_dict = {State.MENU: MainMenu(display, rotary_encoder, event_manager, debug=True),
-                   State.HR: HR(display, rotary_encoder, heart_sensor, event_manager, debug=True),
-                   State.HRV: HRV(display, rotary_encoder),
-                   State.KUBIOS: Kubios(display, rotary_encoder),
-                   State.HISTORY: History(display, rotary_encoder)}
+    states_dict = {State.MENU: MainMenu(display, event_manager, debug=True),
+                   State.HR: HR(display, heart_sensor, event_manager, debug=True),
+                   State.HRV: HRV(display, event_manager),
+                   State.KUBIOS: Kubios(display, event_manager),
+                   State.HISTORY: History(display, event_manager)}
     state_manager = StateManager(states_dict)
 
     while True:

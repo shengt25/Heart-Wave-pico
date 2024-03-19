@@ -1,4 +1,6 @@
 import array
+from icon import icon_hr, icon_hrv, icon_kubios, icon_history
+import framebuf
 
 
 class TextView:
@@ -19,10 +21,13 @@ class TextView:
     def clear(self):
         self._display.text(self._text, self._x, self._y, 0)
 
-    def update_text(self, text, auto_update=True):
-        self._text = text
+    def update(self, text=None, x=None, y=None, auto_update=True):
+        self._text = text if text is not None else self._text
+        self._x = x if x is not None else self._x
+        self._y = y if y is not None else self._y
         if auto_update:
             self.re_init()
+            self.show()
 
 
 class ListView:
@@ -100,29 +105,27 @@ class ListView:
         self._clear_old()
         if self._selected_index + 1 <= len(self._items) - 1:
             self._selected_index += 1
-
-        view_index_l, view_index_h = self._view_index_range
-        if self._selected_index > view_index_h:
-            self._view_index_range = (view_index_l + 1, view_index_h + 1)
-            print(self._view_index_range) if self._debug else None
-
-        self._changed = True
-        if auto_show:
-            self.show()
+            self._changed = True
+            # scroll page
+            view_index_l, view_index_h = self._view_index_range
+            if self._selected_index > view_index_h:
+                self._view_index_range = (view_index_l + 1, view_index_h + 1)
+                print(self._view_index_range) if self._debug else None
+            if auto_show:
+                self.show()
 
     def select_previous(self, auto_show=True):
         self._clear_old()
         if self._selected_index - 1 >= 0:
             self._selected_index -= 1
-
-        view_index_l, view_index_h = self._view_index_range
-        if self._selected_index < view_index_l:
-            self._view_index_range = (view_index_l - 1, view_index_h - 1)
-            print(self._view_index_range) if self._debug else None
-
-        self._changed = True
-        if auto_show:
-            self.show()
+            self._changed = True
+            # scroll page
+            view_index_l, view_index_h = self._view_index_range
+            if self._selected_index < view_index_l:
+                self._view_index_range = (view_index_l - 1, view_index_h - 1)
+                print(self._view_index_range) if self._debug else None
+            if auto_show:
+                self.show()
 
     def get_selected_index(self):
         return self._selected_index
@@ -242,6 +245,70 @@ class GraphView:
         self._draw_graph(value)
 
 
-class MainMenuView:
-    pass
-    # todo: implement the main menu view with icons and text
+class MenuView:
+    def __init__(self, display, debug=False):
+        self._display = display
+        self._debug = debug
+        self._text_view = TextView(self._display, 0, 38, "")
+        # dynamic init
+        self._changed = None
+        self._selected_index = None
+        self.re_init()
+
+    def re_init(self):
+        self._changed = True
+        self._selected_index = 0
+
+    def _get_menu_content(self, index):
+        if index == 0:
+            return icon_hr, "HR Measure"
+        elif index == 1:
+            return icon_hrv, "HRV Analysis"
+        elif index == 2:
+            return icon_kubios, "Kubios Analysis"
+        elif index == 3:
+            return icon_history, "History"
+        else:
+            return None
+
+    def _clear_old(self):
+        self._display.fill(0)
+
+    def _draw_dot(self):
+        self._display.rect(42, 61, 2, 2, 1)
+        self._display.rect(54, 61, 2, 2, 1)
+        self._display.rect(66, 61, 2, 2, 1)
+        self._display.rect(78, 61, 2, 2, 1)
+        x = 42 + self._selected_index * 12
+        self._display.fill_rect(x, 60, 4, 4, 1)
+
+    def select_next(self, auto_show=True):
+        self._clear_old()
+        if self._selected_index + 1 <= 3:
+            self._selected_index += 1
+            self._changed = True
+            # scroll page
+            if auto_show:
+                self.show()
+
+    def select_previous(self, auto_show=True):
+        self._clear_old()
+        if self._selected_index - 1 >= 0:
+            self._selected_index -= 1
+            self._changed = True
+            # scroll page
+            if auto_show:
+                self.show()
+
+    def get_selected_index(self):
+        return self._selected_index
+
+    def show(self):
+        if self._changed:
+            icon, text = self._get_menu_content(self._selected_index)
+            fbuf = framebuf.FrameBuffer(icon, 32, 32, framebuf.MONO_VLSB)
+            self._text_view.update(text=text, x=int((128 - len(text) * 8) / 2))
+            self._display.blit(fbuf, int((128 - 32) / 2), 0)
+            self._draw_dot()
+            self._display.show()
+            self._changed = False

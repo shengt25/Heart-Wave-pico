@@ -44,8 +44,8 @@ class OptionView:
         self._selected_index = 0
         view_count, total_count = self._get_view_range()
         self._view_range = (0, view_count - 1)
-        self._slider_height = int(view_count / total_count * (40 - 5) + 5)
-        print(self._view_range)
+        self._slider_height = int(view_count / total_count * 35 + 5)
+        print(self._view_range) if self._debug else None
 
     def _get_view_range(self):
         view_count = int((self._display.get_height() - self._y) / (self._font_size + self._spacing))
@@ -62,7 +62,7 @@ class OptionView:
     def _draw_scroll_bar(self):
         range_l, range_h = self._view_range
         view_count, total_count = self._get_view_range()
-        slider_y = round(range_l / (total_count - view_count) * (55 - self._slider_height - self._y - 9) + self._y + 9)
+        slider_y = round(range_l / (total_count - view_count) * (46 - self._slider_height - self._y) + self._y + 9)
         self._display.line(124, self._y + 9, 124, 54, 1)
         self._display.fill_rect(123, slider_y, 3, self._slider_height, 1)
         if range_l != 0:  # draw arrow when not on first page
@@ -95,7 +95,7 @@ class OptionView:
         range_l, range_h = self._view_range
         if self._selected_index > range_h:
             self._view_range = (range_l + 1, range_h + 1)
-            print(self._view_range)
+            print(self._view_range) if self._debug else None
 
         self._changed = True
         if auto_show:
@@ -109,7 +109,7 @@ class OptionView:
         range_l, range_h = self._view_range
         if self._selected_index < range_l:
             self._view_range = (range_l - 1, range_h - 1)
-            print(self._view_range)
+            print(self._view_range) if self._debug else None
 
         self._changed = True
         if auto_show:

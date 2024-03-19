@@ -4,10 +4,9 @@ from ui import GraphView
 
 
 class HR:
-    def __init__(self, display, rotary_encoder, heart_sensor, event_manager, debug=False):
+    def __init__(self, display, heart_sensor, event_manager, debug=False):
         # init hardware
         self._display = display
-        self._rotary_encoder = rotary_encoder
         self._heart_sensor = heart_sensor
         self._event_manager = event_manager
         # init ui

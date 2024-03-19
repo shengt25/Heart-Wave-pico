@@ -20,82 +20,86 @@ class TextView:
             self.show()
 
 
-class OptionView:
-    def __init__(self, display, options: list[str], spacing=2, y=0, debug=False):
+class ListView:
+    def __init__(self, display, items: list[str], spacing=2, y=0, debug=False):
         self._display = display
-        self._options = options
+        self._items = items
         self._y = y
-        self._spacing = spacing - 1
-        self._font_size = 6
+        self._spacing = spacing
+        self._font_size = 7
         self._debug = debug
-        self._max_index = len(self._options) - 1
         self._arrow_h = array.array('H', [3, 0, 0, 5, 6, 5])
         self._arrow_l = array.array('H', [0, 0, 6, 0, 3, 5])
 
         # dynamic init
         self._changed = None
         self._selected_index = None
-        self._view_range = None
+        self._view_index_range = None
         self._slider_height = None
         self.init()
 
     def init(self):
         self._changed = True
         self._selected_index = 0
-        view_count, total_count = self._get_view_range()
-        self._view_range = (0, view_count - 1)
-        self._slider_height = int(view_count / total_count * 35 + 5)
-        print(self._view_range) if self._debug else None
+        row_per_page = self._get_view_range()
+        self._view_index_range = (0, row_per_page - 1)
+        self._slider_height = int(row_per_page / len(self._items) * 35 + 5)
+        print(f"view range: {self._view_index_range}") if self._debug else None
 
     def _get_view_range(self):
-        view_count = int((self._display.get_height() - self._y) / (self._font_size + self._spacing))
-        total_count = len(self._options)
-        return view_count, total_count
+        row_per_page = int((self._display.get_height() - self._y) / (self._font_size + self._spacing))
+        if row_per_page * (self._font_size + self._spacing) + self._font_size < self._display.get_height() - self._y:
+            row_per_page += 1
+        print(f"row_per_page: {row_per_page}, items_count: {len(self._items)}") if self._debug else None
+        return row_per_page
 
-    def update_options(self, options):
-        self._options = options
-        self._max_index = len(self._options) - 1
+    def update_items(self, items):
+        self._items = items
+        self.init()
 
     def _clear_old(self):
-        self._display.fill_rect(0, self._y, 128, (self._font_size + self._spacing) * len(self._options), 0)
+        self._display.fill_rect(0, self._y, 128, 64, 0)
 
     def _draw_scroll_bar(self):
-        range_l, range_h = self._view_range
-        view_count, total_count = self._get_view_range()
-        slider_y = round(range_l / (total_count - view_count) * (46 - self._slider_height - self._y) + self._y + 9)
+        view_index_l, view_index_h = self._view_index_range
+        row_per_page = self._get_view_range()
+        slider_y = round(
+            view_index_l / (len(self._items) - row_per_page) * (46 - self._slider_height - self._y) + self._y + 9)
         self._display.line(124, self._y + 9, 124, 54, 1)
         self._display.fill_rect(123, slider_y, 3, self._slider_height, 1)
-        if range_l != 0:  # draw arrow when not on first page
+        if view_index_l != 0:  # draw arrow when not on first page
             self._display.poly(121, self._y, self._arrow_h, 1, 1)
-        if range_l != total_count - view_count:  # draw arrow when on last page
+        if view_index_l != len(self._items) - row_per_page:  # draw arrow when on last page
             self._display.poly(121, 58, self._arrow_l, 1, 1)
 
     def show(self):
         if self._changed:
-            print(f"show, id=: {self._selected_index}") if self._debug else None
-            range_l, range_h = self._view_range
-            for print_index in range(range_l, range_h + 1):
+            view_index_l, view_index_h = self._view_index_range
+            view_index_h = min(view_index_h, len(self._items) -1)  # limit the upper bound one page can show
+            print(f"selected: {self._selected_index}") if self._debug else None
+            for print_index in range(view_index_l, view_index_h + 1):
+                print(f"showing index: {print_index} / {len(self._items) - 1}") if self._debug else None
                 if print_index == self._selected_index:
-                    self._display.text(">" + self._options[print_index], 0,
-                                       self._y + (print_index - range_l) * (self._font_size + self._spacing))
+                    self._display.text(">" + self._items[print_index], 0,
+                                       self._y + (print_index - view_index_l) * (self._font_size + self._spacing))
                 else:
-                    self._display.text(" " + self._options[print_index], 0,
-                                       self._y + (print_index - range_l) * (self._font_size + self._spacing))
-            view_count, total_count = self._get_view_range()
-            if view_count < len(self._options):  # draw scroll bar when one page is not enough
+                    self._display.text(" " + self._items[print_index], 0,
+                                       self._y + (print_index - view_index_l) * (self._font_size + self._spacing))
+            row_per_page = self._get_view_range()
+            if row_per_page < len(self._items):  # draw scroll bar when one page is not enough
                 self._draw_scroll_bar()
             self._display.show()
             self._changed = False
 
     def next(self, auto_show=True):
         self._clear_old()
-        if self._selected_index + 1 <= self._max_index:
+        if self._selected_index + 1 <= len(self._items) - 1:
             self._selected_index += 1
 
-        range_l, range_h = self._view_range
-        if self._selected_index > range_h:
-            self._view_range = (range_l + 1, range_h + 1)
-            print(self._view_range) if self._debug else None
+        view_index_l, view_index_h = self._view_index_range
+        if self._selected_index > view_index_h:
+            self._view_index_range = (view_index_l + 1, view_index_h + 1)
+            print(self._view_index_range) if self._debug else None
 
         self._changed = True
         if auto_show:
@@ -106,10 +110,10 @@ class OptionView:
         if self._selected_index - 1 >= 0:
             self._selected_index -= 1
 
-        range_l, range_h = self._view_range
-        if self._selected_index < range_l:
-            self._view_range = (range_l - 1, range_h - 1)
-            print(self._view_range) if self._debug else None
+        view_index_l, view_index_h = self._view_index_range
+        if self._selected_index < view_index_l:
+            self._view_index_range = (view_index_l - 1, view_index_h - 1)
+            print(self._view_index_range) if self._debug else None
 
         self._changed = True
         if auto_show:

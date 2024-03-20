@@ -128,6 +128,9 @@ class MySSD1306_I2C(SSD1306_I2C):
     def get_width(self):
         return self.width
 
+    def turnoff(self):
+        self.poweroff()
+
 
 def init_display(sda=14, scl=15, width=128, height=64):
     # https://docs.micropython.org/en/latest/esp8266/tutorial/ssd1306.html

@@ -143,8 +143,9 @@ class GraphView:
         self._debug = debug
         self._speed = speed
         # init
-        self._range_h_default = 36000
-        self._range_l_default = 28000
+        self._range_h_default = 65535
+        self._range_l_default = 0
+        self._range_update_period = 20
         # dynamic init
         self._x = None
         self._range_h = None
@@ -177,20 +178,19 @@ class GraphView:
                                     0)
             self._display.fill_rect(self._box_x + 1, self._box_y + 1, exceed_width - 2, self._box_h - 2, 0)
 
-    def _g_update_range(self, value, new_period=False):
-        if new_period:
-            # apply new range every new graph
-            self._range_h = self._range_h_temp
-            self._range_l = self._range_l_temp
-            # reset the temp range
-            self._range_h_temp = self._range_l_default
-            self._range_l_temp = self._range_h_default
-        else:
-            # shirk the range
-            if self._range_h_temp < value < self._range_h_default:
-                self._range_h_temp = value
-            if self._range_l_temp > value > self._range_l_default:
-                self._range_l_temp = value
+    def _g_update_range(self, value):
+        # shirk the range
+        if self._range_h_temp < value < self._range_h_default:
+            self._range_h_temp = value
+        if self._range_l_temp > value > self._range_l_default:
+            self._range_l_temp = value
+
+    def _g_set_new_range(self):
+        self._range_h = self._range_h_temp
+        self._range_l = self._range_l_temp
+        # reset the temp range
+        self._range_h_temp = self._range_l_default
+        self._range_l_temp = self._range_h_default
 
     def _g_normalize(self, value):
         # use default when range is negative or zero
@@ -210,14 +210,17 @@ class GraphView:
         # loop x inside the box
         if self._box_x + 1 < self._x + self._speed < self._box_x + self._box_w - 1:
             self._x += self._speed
-            self._g_update_range(value)
         else:
             # bring x to the start and reset last point
             self._x = self._box_x + 1
             self._last_x = -1
             self._last_y = -1
-            self._g_update_range(value, new_period=True)
+
+        if self._x % self._range_update_period == 0:
+            self._g_set_new_range()
+
         # before drawing
+        self._g_update_range(value)
         self._g_clean_ahead()
         normalized_value = self._g_normalize(value)
         y = self._g_convert_coord(normalized_value)

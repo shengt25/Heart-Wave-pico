@@ -1,42 +1,21 @@
 from machine import Pin, I2C, ADC
 from ssd1306 import SSD1306_I2C
 import time
+from lib.fifo import Fifo
 
 
-class EventTypes:
-    ENCODER_CLOCKWISE = 1 << 0
-    ENCODER_COUNTER_CLOCKWISE = 1 << 1
-    ENCODER_PRESS = 1 << 2
-    # SW1_PRESS = 1<<3
-    # SW2_PRESS = 1<<4
-    # SW3_PRESS = 1<<5
+class ENCODER_EVENT:
+    NONE = 0
+    CLOCKWISE = 1
+    COUNTER_CLOCKWISE = 2
+    PRESS = 3
 
 
-class EventManager:
+class Hardware:
     def __init__(self):
-        self._event_flag = 0
-
-    def set(self, event_type):
-        self._event_flag |= event_type
-
-    def clear(self, event_type):
-        self._event_flag &= ~event_type
-
-    def pop(self, event_type):
-        if self.get(event_type):
-            self.clear(event_type)
-            print(event_type)
-            return True
-        return False
-
-    def get(self, event_type):
-        return self._event_flag & event_type
-
-    def clear_all(self):
-        self._event_flag = 0
-    #
-    # def is_set(self):
-    #     return self._event_flag != 0
+        self.display = init_display()
+        self.rotary_encoder = RotaryEncoder(rotate_debounce_ms=10, btn_debounce_ms=50)
+        self.heart_sensor = HeartSensor()
 
 
 class HeartSensor:
@@ -53,67 +32,50 @@ class HeartSensor:
 
 
 class RotaryEncoder:
-    def __init__(self, event_manager, clk_pin=10, dt_pin=11, btn_pin=12, debounce_ms=5, rotate_timeout=200,
-                 rotate_step_trigger=3, debug=False):
+    def __init__(self, clk_pin=10, dt_pin=11, btn_pin=12, rotate_debounce_ms=10, btn_debounce_ms=50):
         self._clk = Pin(clk_pin, Pin.IN, Pin.PULL_UP)
         self._dt = Pin(dt_pin, Pin.IN, Pin.PULL_UP)
         self._button = Pin(btn_pin, Pin.IN, Pin.PULL_UP)
-        self._last_clk_value = 0
-        self._last_button_state = 1  # ground button, 1 for released
-        self._debounce_ms = debounce_ms
+        self._debounce_ms = rotate_debounce_ms
+        self._btn_debounce_ms = btn_debounce_ms
         self._last_rotate_time = time.ticks_ms()
         self._last_press_time = time.ticks_ms()
-
-        self._rotate_timeout = rotate_timeout
-        self._rotate_step_trigger = rotate_step_trigger
-        self._rotate_step = 0
-
+        self._set_rotate_irq = True
+        self._fifo = Fifo(10)
         # register interrupt
-        self._event_manager = event_manager
-        self._clk.irq(trigger=Pin.IRQ_RISING | Pin.IRQ_FALLING, handler=self._on_rotate)
-        self._button.irq(trigger=Pin.IRQ_RISING | Pin.IRQ_FALLING, handler=self._on_press)
+        self._clk.irq(trigger=Pin.IRQ_RISING, handler=self._rotate_irq, hard=True)
+        self._button.irq(trigger=Pin.IRQ_RISING, handler=self._press_irq, hard=True)
 
-    def _on_rotate(self, p):
-        try:
-            clk_value = self._clk.value()
-            dt_value = self._dt.value()
-        except:
-            return False
-
+    def _rotate_irq(self, p):
         current_time = time.ticks_ms()
-        if current_time - self._last_rotate_time > self._rotate_timeout:
-            self._rotate_step = 0
-        if clk_value != self._last_clk_value and current_time - self._last_rotate_time > self._debounce_ms:
-            if dt_value != clk_value:
-                self._rotate_step += 1
+        if current_time - self._last_rotate_time > self._debounce_ms:
+            if self._dt.value():
+                self._fifo.put(ENCODER_EVENT.COUNTER_CLOCKWISE)
             else:
-                self._rotate_step -= 1
-            self._last_rotate_time = current_time
-            self._last_clk_value = clk_value
+                self._fifo.put(ENCODER_EVENT.CLOCKWISE)
+            self._last_rotate_time = time.ticks_ms()
 
-        if self._rotate_step >= self._rotate_step_trigger:
-            self._event_manager.set(EventTypes.ENCODER_CLOCKWISE)
-            self._rotate_step = 0
-        if self._rotate_step <= -self._rotate_step_trigger:
-            self._event_manager.set(EventTypes.ENCODER_COUNTER_CLOCKWISE)
-            self._rotate_step = 0
-        print(self._rotate_step)
-
-        return True
-
-    def _on_press(self, p):
-        try:
-            button_state = self._button.value()
-        except:
-            return False
+    def _press_irq(self, p):
         current_time = time.ticks_ms()
-        if button_state != self._last_button_state and current_time - self._last_press_time > self._debounce_ms:
-            # ground button, 1 for released, 0 for pressed
-            if button_state == 0:
-                self._event_manager.set(EventTypes.ENCODER_PRESS)
-            self._last_press_time = current_time
-            self._last_button_state = button_state
-        return True
+        if current_time - self._last_press_time > self._btn_debounce_ms:
+            self._fifo.put(ENCODER_EVENT.PRESS)
+            self._last_press_time = time.ticks_ms()
+
+    def set_rotate_irq(self):
+        if not self._set_rotate_irq:
+            self._clk.irq(trigger=Pin.IRQ_RISING, handler=self._rotate_irq, hard=True)
+            self._set_rotate_irq = True
+
+    def unset_rotate_irq(self):
+        if self._set_rotate_irq:
+            self._clk.irq(handler=None)
+            self._set_rotate_irq = False
+
+    def get_event(self):
+        if not self._fifo.empty():
+            return self._fifo.get()
+        else:
+            return ENCODER_EVENT.NONE
 
 
 class MySSD1306_I2C(SSD1306_I2C):
@@ -128,8 +90,11 @@ class MySSD1306_I2C(SSD1306_I2C):
     def get_width(self):
         return self.width
 
-    def turnoff(self):
+    def power_off(self):
         self.poweroff()
+
+    def power_on(self):
+        self.poweron()
 
 
 def init_display(sda=14, scl=15, width=128, height=64):
@@ -137,3 +102,40 @@ def init_display(sda=14, scl=15, width=128, height=64):
     # https://docs.micropython.org/en/latest/library/framebuf.html
     i2c = I2C(1, scl=Pin(scl), sda=Pin(sda), freq=400000)
     return MySSD1306_I2C(width, height, i2c)
+
+# class RotaryEncoder:
+#     def __init__(self, clk_pin=10, dt_pin=11, btn_pin=12, debounce_ms=5, rotate_timeout=200, rotate_trigger_count=3):
+#         self._clk = Pin(clk_pin, Pin.IN, Pin.PULL_UP)
+#         self._dt = Pin(dt_pin, Pin.IN, Pin.PULL_UP)
+#         self._button = Pin(btn_pin, Pin.IN, Pin.PULL_UP)
+#         self._last_button_state = 1  # ground button, 1 for released
+#         self._debounce_ms = debounce_ms
+#         self._last_rotate_time = time.ticks_ms()
+#         self._last_press_time = time.ticks_ms()
+#         self._rotate_timeout = rotate_timeout
+#         self._rotate_trigger_count = rotate_trigger_count
+#         self._set_rotate_irq = True
+#         self._fifo = Fifo(10)
+#         # register interrupt
+#         self._clk.irq(trigger=Pin.IRQ_RISING, handler=self._rotate_irq, hard=True)
+#         self._button.irq(trigger=Pin.IRQ_RISING | Pin.IRQ_FALLING, handler=self._press_irq, hard=True)
+#
+#     def _rotate_irq(self, p):
+#         current_time = time.ticks_ms()
+#         if current_time - self._last_rotate_time > self._rotate_timeout:
+#             self._rotate_step = 0
+#
+#         if self._rotate_step >= self._rotate_trigger_count:
+#             self._fifo.put(EventTypes.ENCODER_CLOCKWISE)
+#             self._rotate_step = 0
+#
+#         if self._rotate_step <= -self._rotate_trigger_count:
+#             self._fifo.put(EventTypes.ENCODER_COUNTER_CLOCKWISE)
+#             self._rotate_step = 0
+#
+#         if current_time - self._last_rotate_time > self._debounce_ms:
+#             if self._dt.value():
+#                 self._rotate_step -= 1
+#             else:
+#                 self._rotate_step += 1
+#             self._last_rotate_time = time.ticks_ms()

@@ -1,43 +1,51 @@
 import time
+
+from MainMenu import MainMenu
 from HR import HR
 from HRV import HRV
-from MainMenu import MainMenu
 from Kubios import Kubios
 from History import History
-from hardware import init_display, RotaryEncoder, HeartSensor, EventManager
+from hardware import Hardware
+from ui import View
 from common import State
 
 
-class StateManager:
-    def __init__(self, states_dict):
-        self.states_dict = states_dict
-
-        # init whole system
-        self._current_state_code = None
+class StateMachine:
+    def __init__(self):
         self._state = None
-        self._next_state_code = State.MENU
+        self.main_menu = None
+        self.hr = None
+        self.hrv = None
+        self.kubios = None
+        self.history = None
 
-    def handle_state(self):
+    def init_states(self, main_menu, hr, hrv, kubios, history):
+        self.main_menu = main_menu
+        self.hr = hr
+        self.hrv = hrv
+        self.kubios = kubios
+        self.history = history
+
+    def set(self, state):
+        self._state = state
+
+    def run(self):
         time.sleep_ms(1)
-        if self._current_state_code != self._next_state_code:
-            self._current_state_code = self._next_state_code
-            self._state = self.states_dict[self._next_state_code]
-            self._state.enter()
-        self._next_state_code = self._state.execute()
+        self._state()
 
 
 if __name__ == "__main__":
-    display = init_display()
-    event_manager = EventManager()
-    rotary_encoder = RotaryEncoder(event_manager=event_manager, debounce_ms=2)
-    heart_sensor = HeartSensor()
+    debug = True
 
-    states_dict = {State.MENU: MainMenu(display, event_manager, debug=True),
-                   State.HR: HR(display, heart_sensor, event_manager, debug=True),
-                   State.HRV: HRV(display, event_manager),
-                   State.KUBIOS: Kubios(display, event_manager),
-                   State.HISTORY: History(display, event_manager)}
-    state_manager = StateManager(states_dict)
+    hardware = Hardware()
+    state_machine = StateMachine()
+    state_machine.init_states(MainMenu(hardware, state_machine, debug=True),
+                              HR(hardware, state_machine, debug=True),
+                              HRV(hardware, state_machine, debug=True),
+                              Kubios(hardware, state_machine, debug=True),
+                              History(hardware, state_machine, debug=True))
+
+    state_machine.set(state_machine.main_menu.enter)
 
     while True:
-        state_manager.handle_state()
+        state_machine.run()

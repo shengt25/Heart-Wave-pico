@@ -1,30 +1,34 @@
-from hardware import HeartSensor, EventTypes
+from hardware import HeartSensor, ENCODER_EVENT
 from common import State
 from ui import GraphView
 
 
 class HR:
-    def __init__(self, display, heart_sensor, event_manager, debug=False):
+    def __init__(self, hardware, state_machine, debug=False):
         # init hardware
-        self._display = display
-        self._heart_sensor = heart_sensor
-        self._event_manager = event_manager
+        self._display = hardware.display
+        self._heart_sensor = hardware.heart_sensor
+        self._rotary_encoder = hardware.rotary_encoder
         # init ui
         self._graph_view = GraphView(self._display)
+        # other
+        self._state_machine = state_machine
         self._debug = debug
 
     def enter(self):
         print("HR enter") if self._debug else None
         self._display.fill(0)
         self._graph_view.re_init()
+        self._state_machine.set(self._run)
 
-    def _next_state(self):
-        if self._event_manager.pop(EventTypes.ENCODER_PRESS):
-            return State.MENU
-        else:
-            return State.HR
-
-    def execute(self):
+    def _run(self):
         event, value = self._heart_sensor.read()
         self._graph_view.show(value)
-        return self._next_state()
+
+        # rotary encoder press event
+        event = self._rotary_encoder.get_event()
+        if event == ENCODER_EVENT.PRESS:
+            self._state_machine.set(self._exit)
+
+    def _exit(self):
+        self._state_machine.set(self._state_machine.main_menu.enter)

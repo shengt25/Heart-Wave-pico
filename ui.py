@@ -3,6 +3,39 @@ from icon import icon_hr, icon_hrv, icon_kubios, icon_history
 import framebuf
 
 
+class ViewType:
+    TEXT = 0
+    LIST = 1
+    GRAPH = 2
+    MENU = 3
+
+
+class View:
+    def __init__(self, display, debug=False):
+        self._display = display
+        self._debug = debug
+        self._views = []
+        self._current_view = None
+
+    def add_view(self, view):
+        self._views.append(view)
+
+    def set_current_view(self, view):
+        self._current_view = view
+
+    def show(self):
+        self._current_view.show()
+
+    def select_next(self):
+        self._current_view.select_next()
+
+    def select_previous(self):
+        self._current_view.select_previous()
+
+    def get_selected_index(self):
+        return self._current_view.get_selected_index()
+
+
 class TextView:
     def __init__(self, display, x: int, y: int, text=""):
         self._display = display
@@ -98,6 +131,7 @@ class ListView:
             row_per_page = self._get_view_range()
             if row_per_page < len(self._items):  # draw scroll bar when one page is not enough
                 self._draw_scroll_bar()
+                # todo move if into _draw_scroll_bar
             self._display.show()
             self._changed = False
 
@@ -253,14 +287,14 @@ class MenuView:
         self._display = display
         self._debug = debug
         self._text_view = TextView(self._display, 0, 38, "")
+        self._selected_index = 0
+        self._changed = False
+
         # dynamic init
-        self._changed = None
-        self._selected_index = None
         self.re_init()
 
     def re_init(self):
-        self._changed = True
-        self._selected_index = 0
+        self.show()
 
     def _get_menu_content(self, index):
         if index == 0:

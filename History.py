@@ -13,5 +13,9 @@ class History:
         self._rotary_encoder.set_rotate_irq()
         self._display.fill(0)
 
-    def execute(self):
+    def _run(self):
         print("HistoryState")
+        self._state_machine.set(self._run)
+
+    def _exit(self):
+        self._state_machine.set(self._state_machine.main_menu.enter)

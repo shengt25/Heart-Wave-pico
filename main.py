@@ -8,6 +8,7 @@ from History import History
 from hardware import Hardware
 from ui import View
 from common import State
+from lib.piotimer import Piotimer
 
 
 class StateMachine:
@@ -30,7 +31,6 @@ class StateMachine:
         self._state = state
 
     def run(self):
-        time.sleep_ms(1)
         self._state()
 
 
@@ -39,8 +39,17 @@ if __name__ == "__main__":
 
     hardware = Hardware()
     state_machine = StateMachine()
-    state_machine.init_states(MainMenu(hardware, state_machine, debug=True),
-                              HR(hardware, state_machine, debug=True),
+    view = View(hardware.display, debug=debug)
+
+
+    def display_timer_callback(tid):
+        view.show()
+
+
+    # display_timer = Piotimer(freq=30, callback=display_timer_callback)
+
+    state_machine.init_states(MainMenu(hardware, state_machine, view, debug=True),
+                              HR(hardware, state_machine, view, debug=True),
                               HRV(hardware, state_machine, debug=True),
                               Kubios(hardware, state_machine, debug=True),
                               History(hardware, state_machine, debug=True))
@@ -48,4 +57,6 @@ if __name__ == "__main__":
     state_machine.set(state_machine.main_menu.enter)
 
     while True:
+        # xtime.sleep_ms(1)
         state_machine.run()
+        view.show()

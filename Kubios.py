@@ -13,7 +13,7 @@ class Kubios:
         print("Kubios enter") if self._debug else None
         self._rotary_encoder.unset_rotate_irq()
         self._display.fill(0)
-        self._graph_view.re_init()
+        self._graph_view.load()
         self._state_machine.set(self._run)
 
     def _run(self):

@@ -14,26 +14,87 @@ class View:
     def __init__(self, display, debug=False):
         self._display = display
         self._debug = debug
-        self._views = []
-        self._current_view = None
+        self._text_views = []
+        self._list_views = []
+        self._graph_views = []
+        self._main_menu_view = None
 
-    def add_view(self, view):
-        self._views.append(view)
+    def set_text_view(self):
+        for text_view in self._text_views:
+            if not text_view.is_using():
+                text_view.load()
+                return text_view
+        # no available text view, create a new one
+        new_text_view = TextView(self._display, 0, 0)
+        new_text_view.load()
+        self._text_views.append(new_text_view)
+        return new_text_view
 
-    def set_current_view(self, view):
-        self._current_view = view
+    def set_list_view(self):
+        for list_view in self._list_views:
+            if not list_view.is_using():
+                list_view.load()
+                return list_view
+        # no available list view, create a new one
+        new_list_view = ListView(self._display, [])
+        new_list_view.load()
+        self._list_views.append(new_list_view)
+        return new_list_view
+
+    def set_graph_view(self):
+        for graph_view in self._graph_views:
+            if not graph_view.is_using():
+                graph_view.load()
+                return graph_view
+        # no available graph view, create a new one
+        new_graph_view = GraphView(self._display)
+        new_graph_view.load()
+        self._graph_views.append(new_graph_view)
+        return new_graph_view
+
+    def set_menu_view(self):
+        if self._main_menu_view is not None:
+            self._main_menu_view.load()
+            return self._main_menu_view
+        # no available menu view, create a new one
+        self._main_menu_view = MenuView(self._display)
+        self._main_menu_view.load()
+        return self._main_menu_view
 
     def show(self):
-        self._current_view.show()
+        for text_view in self._text_views:
+            if text_view.is_using():
+                # text_view.show()
+                if self._debug:
+                    print(f"showing text view")
+        for list_view in self._list_views:
+            if list_view.is_using():
+                # list_view.show()
+                if self._debug:
+                    print(f"showing list view")
 
-    def select_next(self):
-        self._current_view.select_next()
+        for graph_view in self._graph_views:
+            if graph_view.is_using():
+                # graph_view.show()
+                if self._debug:
+                    print(f"showing graph view")
 
-    def select_previous(self):
-        self._current_view.select_previous()
+        if self._main_menu_view is not None:
+            if self._main_menu_view.is_using():
+                # self._main_menu_view.show()
+                if self._debug:
+                    print(f"showing menu view")
+        self._display.show()
 
-    def get_selected_index(self):
-        return self._current_view.get_selected_index()
+    def unload_all(self):
+        for text_view in self._text_views:
+            text_view.unload()
+        for list_view in self._list_views:
+            list_view.unload()
+        for graph_view in self._graph_views:
+            graph_view.unload()
+        if self._main_menu_view is not None:
+            self._main_menu_view.unload()
 
 
 class TextView:
@@ -42,25 +103,33 @@ class TextView:
         self._x = x
         self._y = y
         self._text = text
-        self._changed = None
-        self.re_init()
+        self._updated = False
+        self._using = False
 
-    def re_init(self):
-        self._changed = True
+    def load(self):
+        self._updated = False
+        self._using = True
+
+    def unload(self):
+        self._using = False
+
+    def is_using(self):
+        return self._using
 
     def show(self):
-        self._display.text(self._text, self._x, self._y) if self._changed else None
+        if self._updated:
+            self._display.text(self._text, self._x, self._y)
+            # self._display.show()
+            self._updated = False
 
-    def clear(self):
-        self._display.text(self._text, self._x, self._y, 0)
-
-    def update(self, text=None, x=None, y=None, auto_update=True):
-        self._text = text if text is not None else self._text
-        self._x = x if x is not None else self._x
-        self._y = y if y is not None else self._y
-        if auto_update:
-            self.re_init()
-            self.show()
+    def set(self, text=None, x=None, y=None):
+        if text is not None:
+            self._text = text
+        if x is not None:
+            self._x = x
+        if y is not None:
+            self._y = y
+        self._updated = True
 
 
 class ListView:
@@ -73,21 +142,28 @@ class ListView:
         self._debug = debug
         self._arrow_h = array.array('H', [3, 0, 0, 5, 6, 5])
         self._arrow_l = array.array('H', [0, 0, 6, 0, 3, 5])
+        self._using = False
+        self._updated = False
 
         # dynamic init
-        self._changed = None
         self._selected_index = None
         self._view_index_range = None
         self._slider_height = None
-        self.re_init()
 
-    def re_init(self):
-        self._changed = True
+    def load(self):
+        self._using = True
+        self._updated = False
         self._selected_index = 0
         row_per_page = self._get_view_range()
         self._view_index_range = (0, row_per_page - 1)
         self._slider_height = int(row_per_page / len(self._items) * 35 + 5)
         print(f"view range: {self._view_index_range}") if self._debug else None
+
+    def unload(self):
+        self._using = False
+
+    def is_using(self):
+        return self._using
 
     def _get_view_range(self):
         row_per_page = int((self._display.get_height() - self._y) / (self._font_size + self._spacing))
@@ -96,27 +172,24 @@ class ListView:
         print(f"row_per_page: {row_per_page}, items_count: {len(self._items)}") if self._debug else None
         return row_per_page
 
-    def update_items(self, items):
-        self._items = items
-        self.re_init()
-
     def _clear_old(self):
         self._display.fill_rect(0, self._y, 128, 64, 0)
 
     def _draw_scroll_bar(self):
-        view_index_l, view_index_h = self._view_index_range
         row_per_page = self._get_view_range()
-        slider_y = round(
-            view_index_l / (len(self._items) - row_per_page) * (46 - self._slider_height - self._y) + self._y + 9)
-        self._display.line(124, self._y + 9, 124, 54, 1)
-        self._display.fill_rect(123, slider_y, 3, self._slider_height, 1)
-        if view_index_l != 0:  # draw arrow when not on first page
-            self._display.poly(121, self._y, self._arrow_h, 1, 1)
-        if view_index_l != len(self._items) - row_per_page:  # draw arrow when on last page
-            self._display.poly(121, 58, self._arrow_l, 1, 1)
+        if row_per_page < len(self._items):  # draw scroll bar when one page is not enough
+            view_index_l, view_index_h = self._view_index_range
+            slider_y = round(
+                view_index_l / (len(self._items) - row_per_page) * (46 - self._slider_height - self._y) + self._y + 9)
+            self._display.line(124, self._y + 9, 124, 54, 1)
+            self._display.fill_rect(123, slider_y, 3, self._slider_height, 1)
+            if view_index_l != 0:  # draw arrow when not on first page
+                self._display.poly(121, self._y, self._arrow_h, 1, 1)
+            if view_index_l != len(self._items) - row_per_page:  # draw arrow when on last page
+                self._display.poly(121, 58, self._arrow_l, 1, 1)
 
     def show(self):
-        if self._changed:
+        if self._updated:
             view_index_l, view_index_h = self._view_index_range
             view_index_h = min(view_index_h, len(self._items) - 1)  # limit the upper bound one page can show
             print(f"selected: {self._selected_index}") if self._debug else None
@@ -128,41 +201,44 @@ class ListView:
                 else:
                     self._display.text(" " + self._items[print_index], 0,
                                        self._y + (print_index - view_index_l) * (self._font_size + self._spacing))
-            row_per_page = self._get_view_range()
-            if row_per_page < len(self._items):  # draw scroll bar when one page is not enough
-                self._draw_scroll_bar()
-                # todo move if into _draw_scroll_bar
+            self._draw_scroll_bar()
             self._display.show()
-            self._changed = False
+            self._updated = False
 
     def select_next(self, auto_show=True):
         self._clear_old()
         if self._selected_index + 1 <= len(self._items) - 1:
             self._selected_index += 1
-            self._changed = True
+            self._updated = True
             # scroll page
             view_index_l, view_index_h = self._view_index_range
             if self._selected_index > view_index_h:
                 self._view_index_range = (view_index_l + 1, view_index_h + 1)
                 print(self._view_index_range) if self._debug else None
-            if auto_show:
-                self.show()
+            self._updated = True
 
     def select_previous(self, auto_show=True):
         self._clear_old()
         if self._selected_index - 1 >= 0:
             self._selected_index -= 1
-            self._changed = True
+            self._updated = True
             # scroll page
             view_index_l, view_index_h = self._view_index_range
             if self._selected_index < view_index_l:
                 self._view_index_range = (view_index_l - 1, view_index_h - 1)
                 print(self._view_index_range) if self._debug else None
-            if auto_show:
-                self.show()
+            self._updated = True
 
     def get_selected_index(self):
         return self._selected_index
+
+    def set(self, items=None, y=None):
+        if items is not None:
+            self._items = items
+        if y is not None:
+            self._y = y
+        self.load()
+        self._updated = True
 
 
 class GraphView:
@@ -180,6 +256,9 @@ class GraphView:
         self._range_h_default = 65535
         self._range_l_default = 0
         self._range_update_period = 20
+        self._using = False
+        self._updated = False
+
         # dynamic init
         self._x = None
         self._range_h = None
@@ -188,9 +267,11 @@ class GraphView:
         self._range_l_temp = None
         self._last_x = None
         self._last_y = None
-        self.re_init()
+        self._value = None
 
-    def re_init(self):
+    def load(self):
+        self._using = True
+        self._updated = False
         self._x = self._box_x + 1
         self._range_h = self._range_h_default
         self._range_l = self._range_l_default
@@ -198,6 +279,12 @@ class GraphView:
         self._range_l_temp = self._range_l_default
         self._last_x = -1
         self._last_y = -1
+
+    def unload(self):
+        self._using = False
+
+    def is_using(self):
+        return self._using
 
     def _g_clean_ahead(self):
         # function usage: fill_rect(x, y, w, h, color)
@@ -276,25 +363,35 @@ class GraphView:
             print(f"upper_t: {self._range_h_temp}, lower_t: {self._range_l_temp}")
             print(f"upper: {self._range_h}, lower: {self._range_l}\n")
 
-    def show(self, value):
-        if self._show_box:
-            self._g_draw_box()
-        self._draw_graph(value)
+    def show(self):
+        if self._updated:
+            self._draw_graph(self._value)
+            if self._show_box:
+                self._g_draw_box()
+            self._updated = False
+
+    def set(self, value):
+        self._updated = True
+        self._value = value
 
 
 class MenuView:
     def __init__(self, display, debug=False):
         self._display = display
         self._debug = debug
-        self._text_view = TextView(self._display, 0, 38, "")
         self._selected_index = 0
-        self._changed = False
+        self._updated = False
+        self._using = False
 
-        # dynamic init
-        self.re_init()
+    def load(self):
+        self._using = True
+        self._updated = True
 
-    def re_init(self):
-        self.show()
+    def unload(self):
+        self._using = False
+
+    def is_using(self):
+        return self._using
 
     def _get_menu_content(self, index):
         if index == 0:
@@ -308,9 +405,6 @@ class MenuView:
         else:
             return None
 
-    def _clear_old(self):
-        self._display.fill(0)
-
     def _draw_dot(self):
         self._display.rect(42, 61, 2, 2, 1)
         self._display.rect(54, 61, 2, 2, 1)
@@ -320,32 +414,26 @@ class MenuView:
         self._display.fill_rect(x, 60, 4, 4, 1)
 
     def select_next(self, auto_show=True):
-        self._clear_old()
+        self._display.clear()
         if self._selected_index + 1 <= 3:
             self._selected_index += 1
-            self._changed = True
-            # scroll page
-            if auto_show:
-                self.show()
+            self._updated = True
 
     def select_previous(self, auto_show=True):
-        self._clear_old()
+        self._display.clear()
         if self._selected_index - 1 >= 0:
             self._selected_index -= 1
-            self._changed = True
-            # scroll page
-            if auto_show:
-                self.show()
+            self._updated = True
 
     def get_selected_index(self):
         return self._selected_index
 
     def show(self):
-        if self._changed:
+        if self._updated:
             icon, text = self._get_menu_content(self._selected_index)
             fbuf = framebuf.FrameBuffer(icon, 32, 32, framebuf.MONO_VLSB)
-            self._text_view.update(text=text, x=int((128 - len(text) * 8) / 2))
+            self._display.text(text, int((128 - len(text) * 8) / 2), 38, 1)
             self._display.blit(fbuf, int((128 - 32) / 2), 0)
             self._draw_dot()
             self._display.show()
-            self._changed = False
+            self._updated = False

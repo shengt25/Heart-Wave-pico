@@ -96,6 +96,9 @@ class MySSD1306_I2C(SSD1306_I2C):
     def power_on(self):
         self.poweron()
 
+    def clear(self):
+        self.fill(0)
+
 
 def init_display(sda=14, scl=15, width=128, height=64):
     # https://docs.micropython.org/en/latest/esp8266/tutorial/ssd1306.html

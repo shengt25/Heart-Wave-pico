@@ -17,7 +17,7 @@ class HRV:
     def enter(self):
         print("HRV enter") if self._debug else None
         self._display.fill(0)
-        self._graph_view.re_init()
+        self._graph_view.load()
         self._state_machine.set(self._run)
 
     def _run(self):

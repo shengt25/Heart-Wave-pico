@@ -2,7 +2,6 @@ from machine import Pin, I2C, ADC
 from ssd1306 import SSD1306_I2C
 import time
 from lib.fifo import Fifo
-import framebuf
 
 
 class ENCODER_EVENT:
@@ -86,11 +85,12 @@ class MySSD1306_I2C(SSD1306_I2C):
     def power_on(self):
         self.poweron()
 
-    def update(self, framebuffer):
-        self.fill(0)
-        self.blit(framebuffer, 0, 0)
+    def update(self):
         self.show()
         print(time.ticks_ms(), "screen updated")
+
+    def clear(self):
+        self.fill(0)
 
 
 def init_display(sda=14, scl=15, width=128, height=64):

@@ -7,7 +7,6 @@ from common import State
 class MainMenu:
     def __init__(self, hardware, state_machine, view, debug=False):
         # init hardware
-        self._display = hardware.display
         self._rotary_encoder = hardware.rotary_encoder
         # init ui
         self._view = view
@@ -18,13 +17,12 @@ class MainMenu:
 
     def enter(self):
         print("MainMenu enter") if self._debug else None
-        self._menu_view = self._view.set_menu_view()
         self._rotary_encoder.set_rotate_irq()
-        self._display.clear()
+        self._view.clear()
+        self._menu_view = self._view.set_menu_view()
         self._state_machine.set(self._run)
 
     def _run(self):
-        self._view.show()
         event = self._rotary_encoder.get_event()
         if event == ENCODER_EVENT.CLOCKWISE:
             self._menu_view.select_next()

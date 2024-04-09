@@ -2,6 +2,7 @@ from machine import Pin, I2C, ADC
 from ssd1306 import SSD1306_I2C
 import time
 from lib.fifo import Fifo
+import framebuf
 
 
 class ENCODER_EVENT:
@@ -14,7 +15,7 @@ class ENCODER_EVENT:
 class Hardware:
     def __init__(self):
         self.display = init_display()
-        self.rotary_encoder = RotaryEncoder(rotate_debounce_ms=10, btn_debounce_ms=50)
+        self.rotary_encoder = RotaryEncoder(btn_debounce_ms=50)
         self.heart_sensor = HeartSensor()
 
 
@@ -32,44 +33,39 @@ class HeartSensor:
 
 
 class RotaryEncoder:
-    def __init__(self, clk_pin=10, dt_pin=11, btn_pin=12, rotate_debounce_ms=10, btn_debounce_ms=50):
+    def __init__(self, clk_pin=10, dt_pin=11, btn_pin=12, btn_debounce_ms=50):
         self._clk = Pin(clk_pin, Pin.IN, Pin.PULL_UP)
         self._dt = Pin(dt_pin, Pin.IN, Pin.PULL_UP)
         self._button = Pin(btn_pin, Pin.IN, Pin.PULL_UP)
-        self._debounce_ms = rotate_debounce_ms
         self._btn_debounce_ms = btn_debounce_ms
-        self._last_rotate_time = time.ticks_ms()
         self._last_press_time = time.ticks_ms()
-        self._set_rotate_irq = True
-        self._fifo = Fifo(10)
+        self._has_rotate_irq = False
+        self._fifo = Fifo(100)
         # register interrupt
-        self._clk.irq(trigger=Pin.IRQ_RISING, handler=self._rotate_irq, hard=True)
-        self._button.irq(trigger=Pin.IRQ_RISING, handler=self._press_irq, hard=True)
+        self._button.irq(trigger=Pin.IRQ_RISING, handler=self._press_handler, hard=True)
+        self.set_rotate_irq()
 
-    def _rotate_irq(self, p):
-        current_time = time.ticks_ms()
-        if current_time - self._last_rotate_time > self._debounce_ms:
-            if self._dt.value():
-                self._fifo.put(ENCODER_EVENT.COUNTER_CLOCKWISE)
-            else:
-                self._fifo.put(ENCODER_EVENT.CLOCKWISE)
-            self._last_rotate_time = time.ticks_ms()
+    def _rotate_handler(self, pin):
+        if self._clk.value():
+            self._fifo.put(ENCODER_EVENT.CLOCKWISE)
+        else:
+            self._fifo.put(ENCODER_EVENT.COUNTER_CLOCKWISE)
 
-    def _press_irq(self, p):
+    def _press_handler(self, pin):
         current_time = time.ticks_ms()
         if current_time - self._last_press_time > self._btn_debounce_ms:
             self._fifo.put(ENCODER_EVENT.PRESS)
             self._last_press_time = time.ticks_ms()
 
     def set_rotate_irq(self):
-        if not self._set_rotate_irq:
-            self._clk.irq(trigger=Pin.IRQ_RISING, handler=self._rotate_irq, hard=True)
-            self._set_rotate_irq = True
+        if not self._has_rotate_irq:
+            self._dt.irq(trigger=Pin.IRQ_RISING, handler=self._rotate_handler, hard=True)
+            self._has_rotate_irq = True
 
     def unset_rotate_irq(self):
-        if self._set_rotate_irq:
-            self._clk.irq(handler=None)
-            self._set_rotate_irq = False
+        if self._has_rotate_irq:
+            self._dt.irq(handler=None)
+            self._has_rotate_irq = False
 
     def get_event(self):
         if not self._fifo.empty():
@@ -84,20 +80,17 @@ class MySSD1306_I2C(SSD1306_I2C):
         self.height = height
         super().__init__(width, height, i2c)
 
-    def get_height(self):
-        return self.height
-
-    def get_width(self):
-        return self.width
-
     def power_off(self):
         self.poweroff()
 
     def power_on(self):
         self.poweron()
 
-    def clear(self):
+    def update(self, framebuffer):
         self.fill(0)
+        self.blit(framebuffer, 0, 0)
+        self.show()
+        print(time.ticks_ms(), "screen updated")
 
 
 def init_display(sda=14, scl=15, width=128, height=64):

@@ -1,5 +1,4 @@
-from hardware import HeartSensor, ENCODER_EVENT
-from common import State
+from hardware import HeartSensor
 from ui import GraphView
 
 
@@ -18,12 +17,20 @@ class HRV:
     def enter(self):
         print("HRV enter") if self._debug else None
         self._display.fill(0)
-        self._graph_view = self._view.set_graph_view()
+        self._graph_view = self._view.add_graph()
+        self._heart_sensor.set_timer_irq()
         self._state_machine.set(self._run)
 
     def _run(self):
-        event, value = self._heart_sensor.read()
-        self._graph_view.update(value)
+        if self._heart_sensor.sensor_fifo.has_data():
+            while self._heart_sensor.sensor_fifo.has_data():
+                value = self._heart_sensor.sensor_fifo.get()
+                # print(self._heart_sensor.sensor_data.count())
+        if self._heart_sensor.display_fifo.has_data():
+            while self._heart_sensor.display_fifo.has_data():
+                display_value = self._heart_sensor.display_fifo.get()
+            self._graph_view.update(display_value)
+            print(self._heart_sensor.display_fifo.count())
 
         event = self._rotary_encoder.get_event()
         if event == ENCODER_EVENT.PRESS:

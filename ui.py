@@ -170,9 +170,14 @@ class ListView:
                 46 - self._slider_height - self._y) + self._y + 9)
         self._display.line(124, self._y + 9, 124, 54, 1)  # scroll bar background line
         self._display.fill_rect(123, slider_y, 3, self._slider_height, 1)  # scroll bar slider
-        if self._page != 0:  # draw arrow when not on first page
+        if self._page == 0:  # draw arrow on top
+            self._display.poly(121, self._y, self._arrow_h, 1, 0)
+        else:
             self._display.poly(121, self._y, self._arrow_h, 1, 1)
-        if self._page != len(self._items) - self._items_per_page:  # draw arrow when on last page
+
+        if self._page == len(self._items) - self._items_per_page:  # draw arrow on bottom
+            self._display.poly(121, 58, self._arrow_l, 1, 0)
+        else:
             self._display.poly(121, 58, self._arrow_l, 1, 1)
 
     def _update_framebuffer(self, selection):

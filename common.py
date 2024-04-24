@@ -2,12 +2,16 @@ from lib.fifo import Fifo as Fifo_
 import time
 
 
-class Global:
+class GlobalSettings:
     print_log = False
+    display_max_refresh_rate = 60
+    heart_sensor_pin = 26
+    heart_sensor_sampling_rate = 250
+    graph_refresh_rate = 60
 
 
 def print_log(message):
-    if Global.print_log:
+    if GlobalSettings.print_log:
         print(time.ticks_ms(), message)
 
 

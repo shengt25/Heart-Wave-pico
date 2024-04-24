@@ -8,7 +8,7 @@ from history import History
 from hardware import Hardware
 from ui import View
 from lib.piotimer import Piotimer
-from common import Global
+from common import GlobalSettings
 
 
 class StateMachine:
@@ -30,7 +30,13 @@ class StateMachine:
 
 
 if __name__ == "__main__":
-    Global.print_log = True
+    # settings:
+    GlobalSettings.print_log = True
+    GlobalSettings.display_max_refresh_rate = 60
+    GlobalSettings.heart_sensor_pin = 26
+    GlobalSettings.heart_sensor_sampling_rate = 250
+    GlobalSettings.graph_refresh_rate = 30
+
     hardware = Hardware()
     view = View(hardware.display)
     state_machine = StateMachine(hardware, view)

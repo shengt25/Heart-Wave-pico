@@ -1,7 +1,8 @@
 import array
 from icon import icon_hr, icon_hrv, icon_kubios, icon_history
 import framebuf
-from common import print_log
+from common import print_log, GlobalSettings
+import time
 
 
 class View:
@@ -33,7 +34,7 @@ class View:
         for list_view in self._list_views:
             if not list_view.is_using:
                 list_view.load()
-                print_log(f"re-use list view, total: {len(self._list_views)}"
+                print_log(f"re-use list view, total: {len(self._list_views)}")
                 return list_view
         # no available list view, create a new one
         new_list_view = ListView(self._display)
@@ -84,13 +85,13 @@ class View:
 
 
 class TextView:
-    def __init__(self, display, x: int = 0, y: int = 0, text=""):
-        self._x = x
-        self._y = y
-        self._text = text
+    def __init__(self, display):
         self._display = display
 
         # dynamic
+        self._x = 0
+        self._y = 0
+        self._text = ""
         self.is_using = True
 
     def load(self):
@@ -102,11 +103,11 @@ class TextView:
 
     def _clear_old(self):
         self._display.text(self._text, self._x, self._y, 0)
-        self._display.set_update()
+        self._display.set_updated()
 
     def _update_framebuffer(self):
         self._display.text(self._text, self._x, self._y)
-        self._display.set_update()
+        self._display.set_updated()
 
     def set_text(self, text):
         assert self.is_using is True, "Trying to update unused TextView"
@@ -161,7 +162,7 @@ class ListView:
 
     def _clear_old(self):
         self._display.fill_rect(0, self._y, self._display.width, self._display.height - self._y, 0)
-        self._display.set_update()
+        self._display.set_updated()
 
     def _draw_scroll_bar(self):
         assert self._items_per_page < len(self._items), "No need to draw scroll bar"
@@ -185,7 +186,7 @@ class ListView:
                                    self._y + (i - self._page) * (self._font_size + self._spacing))
         if self._show_scroll_bar:
             self._draw_scroll_bar()
-        self._display.set_update()
+        self._display.set_updated()
 
     def get_page(self):
         return self._page
@@ -221,23 +222,24 @@ class ListView:
 
 
 class GraphView:
-    def __init__(self, display, box_x=0, box_y=10, box_w=128, box_h=40, speed=1, show_box=False, debug=False):
-        # parse parameters
-        self._box_x = box_x
-        self._box_y = box_y
-        self._box_w = box_w
-        self._box_h = box_h
-        self._show_box = show_box
-        self._debug = debug
-        self._speed = speed
+    def __init__(self, display):
         # init
         self._display = display
         self._range_h_default = 65535
         self._range_l_default = 0
         self._range_update_period = 20
-        self.is_using = False
+        self.is_using = True
+        self._refresh_period = 1000 // GlobalSettings.graph_refresh_rate
+        self._last_refresh_time = 0
 
-        # dynamic init
+        # dynamic
+        self._box_x = 0
+        self._box_y = 10
+        self._box_w = 128
+        self._box_h = 40
+        self._show_box = False
+        self._speed = 1
+
         self._x = None
         self._range_h = None
         self._range_l = None
@@ -245,6 +247,20 @@ class GraphView:
         self._range_l_temp = None
         self._last_x = None
         self._last_y = None
+
+    def set_attributes(self, box_x=None, box_y=None, box_w=None, box_h=None, speed=None, show_box=None):
+        if box_x is not None:
+            self._box_x = box_x
+        if box_y is not None:
+            self._box_y = box_y
+        if box_w is not None:
+            self._box_w = box_w
+        if box_h is not None:
+            self._box_h = box_h
+        if speed is not None:
+            self._speed = speed
+        if show_box is not None:
+            self._show_box = show_box
 
     def load(self):
         self.is_using = True
@@ -332,16 +348,17 @@ class GraphView:
         # update last point
         self._last_x = self._x
         self._last_y = y
-        self._vi1ew._updated = True  # todo modify those
+        # self._display.set_update()
+        self._display.set_update_now()
 
-        if self._debug:
-            print(f"raw: {value}, norm:{normalized_value}, xy: {self._x}, {y}")
-            print(f"upper_t: {self._range_h_temp}, lower_t: {self._range_l_temp}")
-            print(f"upper: {self._range_h}, lower: {self._range_l}\n")
-        self._vi1ew._updated = True
+        # print(f"raw: {value}, norm:{normalized_value}, xy: {self._x}, {y}")
+        # print(f"upper_t: {self._range_h_temp}, lower_t: {self._range_l_temp}")
+        # print(f"upper: {self._range_h}, lower: {self._range_l}\n")
 
-    def update_value(self, value):
-        self._update_framebuffer(value)
+    def set_value(self, value):
+        if time.ticks_ms() - self._last_refresh_time > self._refresh_period:
+            self._update_framebuffer(value)
+            self._last_refresh_time = time.ticks_ms()
 
 
 class MenuView:
@@ -371,7 +388,7 @@ class MenuView:
         self._display.rect(78, 61, 2, 2, 1)
         x = 42 + selection * 12
         self._display.fill_rect(x, 60, 4, 4, 1)
-        self._display.set_update()
+        self._display.set_updated()
 
     def set_selection(self, selection):
         if selection == 0:

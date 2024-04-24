@@ -2,7 +2,7 @@ from machine import Pin, I2C, ADC
 from ssd1306 import SSD1306_I2C as SSD1306_I2C_
 import time
 from lib.piotimer import Piotimer
-from common import Fifo, Global, print_log
+from common import Fifo, print_log, GlobalSettings
 
 
 class EncoderEvent:
@@ -19,9 +19,9 @@ class Hardware:
 
 
 class HeartSensor:
-    def __init__(self, pin=26, sampling_rate=250):
-        self._adc = ADC(Pin(pin))
-        self._sampling_rate = sampling_rate
+    def __init__(self):
+        self._adc = ADC(Pin(GlobalSettings.heart_sensor_pin))
+        self._sampling_rate = GlobalSettings.heart_sensor_sampling_rate
         self._timer = None
         self.sensor_fifo = Fifo(20)
 
@@ -103,23 +103,31 @@ class RotaryEncoder:
 
 
 class SSD1306_I2C(SSD1306_I2C_):
-    def __init__(self, width, height, i2c):
+    def __init__(self, width, height, i2c, max_refresh_rate):
         self.width = width
         self.height = height
-        self.updated = False
+        self._updated = False
+        self._update_now = False  # force update once regardless of refresh rate
+        self._last_update_time = 0
+        self._refresh_period = 1000 // max_refresh_rate
         super().__init__(width, height, i2c)
 
     def show(self):
-        """Only show the screen when update flag marked."""
-        if self.updated:
+        """Only show the screen when forced or update flag marked."""
+        if (time.ticks_ms() - self._last_update_time > self._refresh_period and self._updated) or self._update_now:
             super().show()
-            if Global.print_log:
-                print(time.ticks_ms(), "screen updated")
-            self.updated = False
+            print_log("screen updated")
+            self._last_update_time = time.ticks_ms()
+            self._updated = False
+            self._update_now = False
 
-    def set_update(self):
+    def set_update_now(self):
+        """Force the screen to update once, regardless of refresh rate."""
+        self._update_now = True
+
+    def set_updated(self):
         """Mark the screen as updated, call show() in the main loop."""
-        self.updated = True
+        self._updated = True
 
     def clear(self):
         self.fill(0)
@@ -129,4 +137,4 @@ def init_display(sda=14, scl=15, width=128, height=64):
     # https://docs.micropython.org/en/latest/esp8266/tutorial/ssd1306.html
     # https://docs.micropython.org/en/latest/library/framebuf.html
     i2c = I2C(1, scl=Pin(scl), sda=Pin(sda), freq=400000)
-    return SSD1306_I2C(width, height, i2c)
+    return SSD1306_I2C(width, height, i2c, GlobalSettings.display_max_refresh_rate)

@@ -1,43 +1,47 @@
 import time
-from HR import HR
-from HRV import HRV
-from MainMenu import MainMenu
-from Kubios import Kubios
-from History import History
-from hardware import init_display, RotaryEncoder, HeartSensor, EventManager
-from common import State
+
+from main_menu import MainMenu
+from hr import HR
+from hrv import HRV
+from kubios import Kubios
+from history import History
+from hardware import Hardware
+from ui import View
+from lib.piotimer import Piotimer
+from common import GlobalSettings
 
 
-class StateManager:
-    def __init__(self, states_dict):
-        self.states_dict = states_dict
-
-        # init whole system
-        self._current_state_code = None
+class StateMachine:
+    def __init__(self, hardware, view):
         self._state = None
-        self._next_state_code = State.MENU
+        self._view = view
+        self._hardware = hardware
+        self.main_menu = MainMenu(hardware, self, view)
+        self.hr = HR(hardware, self, view)
+        self.hrv = HRV(hardware, self, view)
+        self.kubios = Kubios(hardware, self, view)
+        self.history = History(hardware, self, view)
 
-    def handle_state(self):
-        time.sleep_ms(1)
-        if self._current_state_code != self._next_state_code:
-            self._current_state_code = self._next_state_code
-            self._state = self.states_dict[self._next_state_code]
-            self._state.enter()
-        self._next_state_code = self._state.execute()
+    def set(self, state):
+        self._state = state
+
+    def run(self):
+        self._state()
 
 
 if __name__ == "__main__":
-    display = init_display()
-    event_manager = EventManager()
-    rotary_encoder = RotaryEncoder(event_manager=event_manager, debounce_ms=2)
-    heart_sensor = HeartSensor()
+    # settings:
+    GlobalSettings.print_log = True
+    GlobalSettings.display_max_refresh_rate = 60
+    GlobalSettings.heart_sensor_pin = 26
+    GlobalSettings.heart_sensor_sampling_rate = 250
+    GlobalSettings.graph_refresh_rate = 30
 
-    states_dict = {State.MENU: MainMenu(display, rotary_encoder, event_manager, debug=True),
-                   State.HR: HR(display, rotary_encoder, heart_sensor, event_manager, debug=True),
-                   State.HRV: HRV(display, rotary_encoder),
-                   State.KUBIOS: Kubios(display, rotary_encoder),
-                   State.HISTORY: History(display, rotary_encoder)}
-    state_manager = StateManager(states_dict)
+    hardware = Hardware()
+    view = View(hardware.display)
+    state_machine = StateMachine(hardware, view)
+    state_machine.set(state_machine.main_menu.enter)
 
     while True:
-        state_manager.handle_state()
+        state_machine.run()
+        view.show()

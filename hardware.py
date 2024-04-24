@@ -1,136 +1,140 @@
 from machine import Pin, I2C, ADC
-from ssd1306 import SSD1306_I2C
+from ssd1306 import SSD1306_I2C as SSD1306_I2C_
 import time
+from lib.piotimer import Piotimer
+from common import Fifo, print_log, GlobalSettings
 
 
-class EventTypes:
-    ENCODER_CLOCKWISE = 1 << 0
-    ENCODER_COUNTER_CLOCKWISE = 1 << 1
-    ENCODER_PRESS = 1 << 2
-    # SW1_PRESS = 1<<3
-    # SW2_PRESS = 1<<4
-    # SW3_PRESS = 1<<5
+class EncoderEvent:
+    NONE = 0
+    ROTATE = 1
+    PRESS = 2
 
 
-class EventManager:
+class Hardware:
     def __init__(self):
-        self._event_flag = 0
-
-    def set(self, event_type):
-        self._event_flag |= event_type
-
-    def clear(self, event_type):
-        self._event_flag &= ~event_type
-
-    def pop(self, event_type):
-        if self.get(event_type):
-            self.clear(event_type)
-            print(event_type)
-            return True
-        return False
-
-    def get(self, event_type):
-        return self._event_flag & event_type
-
-    def clear_all(self):
-        self._event_flag = 0
-    #
-    # def is_set(self):
-    #     return self._event_flag != 0
+        self.display = init_display()
+        self.rotary_encoder = RotaryEncoder(btn_debounce_ms=50)
+        self.heart_sensor = HeartSensor()
 
 
 class HeartSensor:
-    def __init__(self, pin=26):
-        self._adc = ADC(Pin(pin))
+    def __init__(self):
+        self._adc = ADC(Pin(GlobalSettings.heart_sensor_pin))
+        self._sampling_rate = GlobalSettings.heart_sensor_sampling_rate
+        self._timer = None
+        self.sensor_fifo = Fifo(20)
+
+    def set_timer_irq(self):
+        self._timer = Piotimer(freq=self._sampling_rate, callback=self._sensor_handler)
+
+    def unset_timer_irq(self):
+        self._timer.deinit()
+
+    def _sensor_handler(self, tid):
+        value = self._adc.read_u16()
+        self.sensor_fifo.put(value)
 
     def read(self):
-        """Return (True/False=success/fail, value)."""
-        try:
-            value = self._adc.read_u16()
-        except:
-            return False, 0  # return immediately if error
-        return True, value
+        return self._adc.read_u16()
 
 
 class RotaryEncoder:
-    def __init__(self, event_manager, clk_pin=10, dt_pin=11, btn_pin=12, debounce_ms=5, rotate_timeout=200,
-                 rotate_step_trigger=3, debug=False):
+    def __init__(self, clk_pin=10, dt_pin=11, btn_pin=12, btn_debounce_ms=50):
         self._clk = Pin(clk_pin, Pin.IN, Pin.PULL_UP)
         self._dt = Pin(dt_pin, Pin.IN, Pin.PULL_UP)
         self._button = Pin(btn_pin, Pin.IN, Pin.PULL_UP)
-        self._last_clk_value = 0
-        self._last_button_state = 1  # ground button, 1 for released
-        self._debounce_ms = debounce_ms
-        self._last_rotate_time = time.ticks_ms()
+        self._btn_debounce_ms = btn_debounce_ms
         self._last_press_time = time.ticks_ms()
+        self._event_fifo = Fifo(20, 'h')
+        # register press interrupt by default (because every state needs it)
+        self._button.irq(trigger=Pin.IRQ_RISING, handler=self._press_handler, hard=True)
 
-        self._rotate_timeout = rotate_timeout
-        self._rotate_step_trigger = rotate_step_trigger
-        self._rotate_step = 0
+        self._items_count = 0
+        self._loop_mode = False
+        self._position = 0
 
-        # register interrupt
-        self._event_manager = event_manager
-        self._clk.irq(trigger=Pin.IRQ_RISING | Pin.IRQ_FALLING, handler=self._on_rotate)
-        self._button.irq(trigger=Pin.IRQ_RISING | Pin.IRQ_FALLING, handler=self._on_press)
+    def _cal_position(self, value):
+        if self._loop_mode:
+            self._position = (self._position + value) % self._items_count
+        else:
+            self._position = max(0, min(self._items_count - 1, self._position + value))
 
-    def _on_rotate(self, p):
-        try:
-            clk_value = self._clk.value()
-            dt_value = self._dt.value()
-        except:
-            return False
+    def _rotate_handler(self, pin):
+        if self._clk.value():
+            self._event_fifo.put(1)
+        else:
+            self._event_fifo.put(-1)
 
+    def _press_handler(self, pin):
         current_time = time.ticks_ms()
-        if current_time - self._last_rotate_time > self._rotate_timeout:
-            self._rotate_step = 0
-        if clk_value != self._last_clk_value and current_time - self._last_rotate_time > self._debounce_ms:
-            if dt_value != clk_value:
-                self._rotate_step += 1
-            else:
-                self._rotate_step -= 1
-            self._last_rotate_time = current_time
-            self._last_clk_value = clk_value
+        if current_time - self._last_press_time > self._btn_debounce_ms:
+            self._event_fifo.put(0)
+            self._last_press_time = time.ticks_ms()
 
-        if self._rotate_step >= self._rotate_step_trigger:
-            self._event_manager.set(EventTypes.ENCODER_CLOCKWISE)
-            self._rotate_step = 0
-        if self._rotate_step <= -self._rotate_step_trigger:
-            self._event_manager.set(EventTypes.ENCODER_COUNTER_CLOCKWISE)
-            self._rotate_step = 0
-        print(self._rotate_step)
+    def set_rotate_irq(self, items_count, position=0, loop_mode=False):
+        """Set irq, max index, current position, and whether loop back or stop at limit."""
+        self._items_count = items_count
+        self._loop_mode = loop_mode
+        self._position = position
+        self._dt.irq(trigger=Pin.IRQ_RISING, handler=self._rotate_handler, hard=True)
 
-        return True
+    def unset_rotate_irq(self):
+        self._dt.irq(handler=None)
 
-    def _on_press(self, p):
-        try:
-            button_state = self._button.value()
-        except:
-            return False
-        current_time = time.ticks_ms()
-        if button_state != self._last_button_state and current_time - self._last_press_time > self._debounce_ms:
-            # ground button, 1 for released, 0 for pressed
-            if button_state == 0:
-                self._event_manager.set(EventTypes.ENCODER_PRESS)
-            self._last_press_time = current_time
-            self._last_button_state = button_state
-        return True
+    def get_position(self):
+        """Get the current absolute position of the encoder."""
+        print_log("Encoder position:" + str(self._position))
+        return self._position
+
+    def get_event(self):
+        """Event needs to be got in the main loop and fast, to avoid fifo overflow."""
+        if self._event_fifo.has_data():
+            while self._event_fifo.has_data():
+                value = self._event_fifo.get()
+                if value == 0:  # press, clean fifo and exit
+                    self._event_fifo.clear()
+                    return EncoderEvent.PRESS
+                else:  # rotate, value is either -1 or 1
+                    self._cal_position(value)
+            return EncoderEvent.ROTATE
+        else:
+            return EncoderEvent.NONE
 
 
-class MySSD1306_I2C(SSD1306_I2C):
-    def __init__(self, width, height, i2c):
+class SSD1306_I2C(SSD1306_I2C_):
+    def __init__(self, width, height, i2c, max_refresh_rate):
         self.width = width
         self.height = height
+        self._updated = False
+        self._update_now = False  # force update once regardless of refresh rate
+        self._last_update_time = 0
+        self._refresh_period = 1000 // max_refresh_rate
         super().__init__(width, height, i2c)
 
-    def get_height(self):
-        return self.height
+    def show(self):
+        """Only show the screen when forced or update flag marked."""
+        if (time.ticks_ms() - self._last_update_time > self._refresh_period and self._updated) or self._update_now:
+            super().show()
+            print_log("screen updated")
+            self._last_update_time = time.ticks_ms()
+            self._updated = False
+            self._update_now = False
 
-    def get_width(self):
-        return self.width
+    def set_update_now(self):
+        """Force the screen to update once, regardless of refresh rate."""
+        self._update_now = True
+
+    def set_updated(self):
+        """Mark the screen as updated, call show() in the main loop."""
+        self._updated = True
+
+    def clear(self):
+        self.fill(0)
 
 
 def init_display(sda=14, scl=15, width=128, height=64):
     # https://docs.micropython.org/en/latest/esp8266/tutorial/ssd1306.html
     # https://docs.micropython.org/en/latest/library/framebuf.html
     i2c = I2C(1, scl=Pin(scl), sda=Pin(sda), freq=400000)
-    return MySSD1306_I2C(width, height, i2c)
+    return SSD1306_I2C(width, height, i2c, GlobalSettings.display_max_refresh_rate)

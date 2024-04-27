@@ -91,6 +91,7 @@ class TextView:
         # dynamic
         self._x = 0
         self._y = 0
+        self._inverse = False
         self._text = ""
         self._is_active = True
 
@@ -108,7 +109,10 @@ class TextView:
         self._display.set_update()
 
     def _update_framebuffer(self):
-        self._display.text(self._text, self._x, self._y)
+        if self._inverse:
+            self._display.text(self._text, self._x, self._y, 0)
+        else:
+            self._display.text(self._text, self._x, self._y, 1)
         self._display.set_update()
 
     def set_text(self, text):
@@ -117,12 +121,14 @@ class TextView:
         self._text = text
         self._update_framebuffer()
 
-    def set_attributes(self, x=None, y=None):
+    def set_attributes(self, x=None, y=None, inverse=None):
         self._clear_old()
         if x is not None:
             self._x = x
         if y is not None:
             self._y = y
+        if inverse is not None:
+            self._inverse = inverse
         self._update_framebuffer()
 
 
@@ -169,13 +175,17 @@ class ListView:
         print_log(f"List view item per page: {items_per_page}, total: {len(self._items)}")
         return items_per_page
 
-    def _cal_scrollbar_param(self):
-        self._scrollbar_top = self._y + 5 + 3  # 5 is the height of arrow, 3 is the margin between arrow and scrollbar
-        self._scrollbar_bottom = self._display.height - 5 - 3
-        self._slider_top = self._scrollbar_top + 1  # offset 1 pixel from scrollbar outline
-        self._slider_bottom = self._scrollbar_bottom - 1
-        self._slider_height = int(self._items_per_page / len(self._items) * (
-                self._slider_bottom - self._slider_top - self._slider_min_height) + self._slider_min_height)
+    def _set_scrollbar_param(self):
+        if self._items_per_page < len(self._items):
+            self._show_scrollbar = True
+            self._scrollbar_top = self._y + 5 + 3  # 5 is height of arrow, 3 is margin between arrow and scrollbar
+            self._scrollbar_bottom = self._display.height - 5 - 3
+            self._slider_top = self._scrollbar_top + 1  # offset 1 pixel from scrollbar outline
+            self._slider_bottom = self._scrollbar_bottom - 1
+            self._slider_height = int(self._items_per_page / len(self._items) * (
+                    self._slider_bottom - self._slider_top - self._slider_min_height) + self._slider_min_height)
+        else:
+            self._show_scrollbar = False
 
     def _clear_old(self):
         self._display.fill_rect(0, self._y, self._display.width, self._display.height - self._y, 0)
@@ -237,11 +247,7 @@ class ListView:
     def set_items(self, items):
         self._items = items
         self._items_per_page = self._cal_items_per_page()
-        if self._items_per_page < len(self._items):
-            self._show_scrollbar = True
-            self._cal_scrollbar_param()
-        else:
-            self._show_scrollbar = False
+        self._set_scrollbar_param()
         self._page = 0  # set view index to first item
         self.set_selection(0)
 
@@ -251,11 +257,8 @@ class ListView:
             self._y = y
         if spacing is not None:
             self._spacing = spacing
-        if self._items_per_page < len(self._items):
-            self._show_scrollbar = True
-            self._cal_scrollbar_param()
-        else:
-            self._show_scrollbar = False
+        self._set_scrollbar_param()
+        self._page = 0  # set view index to first item
         self.set_selection(0)
 
 

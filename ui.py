@@ -18,7 +18,7 @@ class View:
     def add_text(self):
         # find available view and return it
         for text_view in self._text_views:
-            if not text_view.is_active:
+            if not text_view.is_active():
                 text_view.activate()
                 print_log(f"re-use text view, total: {len(self._text_views)}")
                 return text_view
@@ -32,7 +32,7 @@ class View:
     def add_list(self):
         # find available view and return it
         for list_view in self._list_views:
-            if not list_view.is_active:
+            if not list_view.is_active():
                 list_view.activate()
                 print_log(f"re-use list view, total: {len(self._list_views)}")
                 return list_view
@@ -46,7 +46,7 @@ class View:
     def add_graph(self):
         # find available graph view and return it
         for graph_view in self._graph_views:
-            if not graph_view.is_active:
+            if not graph_view.is_active():
                 graph_view.activate()
                 print_log(f"re-use graph view, total: {len(self._graph_views)}")
                 return graph_view
@@ -59,7 +59,7 @@ class View:
 
     def add_menu(self):
         for menu_view in self._menu_views:
-            if not menu_view.is_active:
+            if not menu_view.is_active():
                 menu_view.activate()
                 print_log(f"re-use menu view, total: {len(self._menu_views)}")
                 return menu_view
@@ -92,13 +92,16 @@ class TextView:
         self._x = 0
         self._y = 0
         self._text = ""
-        self.is_active = True
+        self._is_active = True
 
     def activate(self):
-        self.is_active = True
+        self._is_active = True
 
     def deactivate(self):
-        self.is_active = False
+        self._is_active = False
+
+    def is_active(self):
+        return self._is_active
 
     def _clear_old(self):
         self._display.text(self._text, self._x, self._y, 0)
@@ -109,7 +112,7 @@ class TextView:
         self._display.set_update()
 
     def set_text(self, text):
-        assert self.is_active is True, "Trying to update unused TextView"
+        assert self._is_active is True, "Trying to update unused TextView"
         self._clear_old()
         self._text = text
         self._update_framebuffer()
@@ -129,7 +132,7 @@ class ListView:
         self._font_size = 7
         self._arrow_top = array.array('H', [3, 0, 0, 5, 6, 5])  # coordinates array of the poly vertex
         self._arrow_bottom = array.array('H', [0, 0, 6, 0, 3, 5])
-        self.is_active = False
+        self._is_active = False
 
         # attributes
         self._y = 0  # top y position
@@ -149,10 +152,13 @@ class ListView:
         self._slider_bottom = 0
 
     def activate(self):
-        self.is_active = True
+        self._is_active = True
 
     def deactivate(self):
-        self.is_active = False
+        self._is_active = False
+
+    def is_active(self):
+        return self._is_active
 
     def _cal_items_per_page(self):
         items_per_page = int((self._display.height - self._y) / (self._font_size + self._spacing))
@@ -261,7 +267,7 @@ class GraphView:
         self._range_h_default = 65535
         self._range_l_default = 0
         self._range_update_period = 20
-        self.is_active = True
+        self._is_active = True
         self._refresh_period = 1000 // GlobalSettings.graph_refresh_rate
         self._last_refresh_time = 0
 
@@ -296,10 +302,10 @@ class GraphView:
             self._show_box = show_box
 
     def activate(self):
-        self.is_active = True
+        self._is_active = True
 
     def deactivate(self):
-        self.is_active = False
+        self._is_active = False
         self._x = self._box_x + 1
         self._range_h = self._range_h_default
         self._range_l = self._range_l_default
@@ -307,6 +313,9 @@ class GraphView:
         self._range_l_temp = self._range_l_default
         self._last_x = -1
         self._last_y = -1
+
+    def is_active(self):
+        return self._is_active
 
     def _g_clean_ahead(self):
         # function usage: fill_rect(x, y, w, h, color)
@@ -401,13 +410,16 @@ class MenuView:
         self._icon_buf_history = framebuf.FrameBuffer(icon_history, 32, 32, framebuf.MONO_VLSB)
 
         self._display = display
-        self.is_active = True
+        self._is_active = True
 
     def activate(self):
-        self.is_active = True
+        self._is_active = True
 
     def deactivate(self):
-        self.is_active = False
+        self._is_active = False
+
+    def is_active(self):
+        return self._is_active
 
     def _update_framebuffer(self, text, icon_buf, selection):
         self._display.clear()

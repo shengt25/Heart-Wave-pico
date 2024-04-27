@@ -18,13 +18,13 @@ class View:
     def add_text(self):
         # find available view and return it
         for text_view in self._text_views:
-            if not text_view.is_using:
-                text_view.load()
+            if not text_view.is_active:
+                text_view.activate()
                 print_log(f"re-use text view, total: {len(self._text_views)}")
                 return text_view
         # no available text view, create a new one
         new_text_view = TextView(self._display)
-        new_text_view.load()
+        new_text_view.activate()
         self._text_views.append(new_text_view)
         print_log(f"new text view created, total: {len(self._text_views)}")
         return new_text_view
@@ -32,13 +32,13 @@ class View:
     def add_list(self):
         # find available view and return it
         for list_view in self._list_views:
-            if not list_view.is_using:
-                list_view.load()
+            if not list_view.is_active:
+                list_view.activate()
                 print_log(f"re-use list view, total: {len(self._list_views)}")
                 return list_view
         # no available list view, create a new one
         new_list_view = ListView(self._display)
-        new_list_view.load()
+        new_list_view.activate()
         self._list_views.append(new_list_view)
         print_log(f"new list view created, total: {len(self._list_views)}")
         return new_list_view
@@ -46,41 +46,41 @@ class View:
     def add_graph(self):
         # find available graph view and return it
         for graph_view in self._graph_views:
-            if not graph_view.is_using:
-                graph_view.load()
+            if not graph_view.is_active:
+                graph_view.activate()
                 print_log(f"re-use graph view, total: {len(self._graph_views)}")
                 return graph_view
         # if no available view, create a new one
         new_graph_view = GraphView(self._display)
-        new_graph_view.load()
+        new_graph_view.activate()
         self._graph_views.append(new_graph_view)
         print_log(f"new graph view created, total: {len(self._graph_views)}")
         return new_graph_view
 
     def add_menu(self):
         for menu_view in self._menu_views:
-            if not menu_view.is_using:
-                menu_view.load()
+            if not menu_view.is_active:
+                menu_view.activate()
                 print_log(f"re-use menu view, total: {len(self._menu_views)}")
                 return menu_view
         new_menu_view = MenuView(self._display)
-        new_menu_view.load()
+        new_menu_view.activate()
         self._menu_views.append(new_menu_view)
         print_log(f"new menu view created, total: {len(self._menu_views)}")
         return new_menu_view
 
-    def show(self):
+    def refresh(self):
         self._display.show()
 
-    def unload_all(self):
+    def deactivate_all(self):
         for text_view in self._text_views:
-            text_view.unload()
+            text_view.deactivate()
         for list_view in self._list_views:
-            list_view.unload()
+            list_view.deactivate()
         for graph_view in self._graph_views:
-            graph_view.unload()
+            graph_view.deactivate()
         for menu_view in self._menu_views:
-            menu_view.unload()
+            menu_view.deactivate()
         self._display.clear()
 
 
@@ -92,25 +92,24 @@ class TextView:
         self._x = 0
         self._y = 0
         self._text = ""
-        self.is_using = True
+        self.is_active = True
 
-    def load(self):
-        self.is_using = True
-        self._update_framebuffer()
+    def activate(self):
+        self.is_active = True
 
-    def unload(self):
-        self.is_using = False
+    def deactivate(self):
+        self.is_active = False
 
     def _clear_old(self):
         self._display.text(self._text, self._x, self._y, 0)
-        self._display.set_updated()
+        self._display.set_update()
 
     def _update_framebuffer(self):
         self._display.text(self._text, self._x, self._y)
-        self._display.set_updated()
+        self._display.set_update()
 
     def set_text(self, text):
-        assert self.is_using is True, "Trying to update unused TextView"
+        assert self.is_active is True, "Trying to update unused TextView"
         self._clear_old()
         self._text = text
         self._update_framebuffer()
@@ -128,25 +127,32 @@ class ListView:
     def __init__(self, display):
         self._display = display
         self._font_size = 7
-        self._arrow_h = array.array('H', [3, 0, 0, 5, 6, 5])  # coordinates array of the poly vertex
-        self._arrow_l = array.array('H', [0, 0, 6, 0, 3, 5])
-        self.is_using = False
+        self._arrow_top = array.array('H', [3, 0, 0, 5, 6, 5])  # coordinates array of the poly vertex
+        self._arrow_bottom = array.array('H', [0, 0, 6, 0, 3, 5])
+        self.is_active = False
 
-        # dynamic
-        self._y = 0
+        # attributes
+        self._y = 0  # top y position
         self._spacing = 2
         self._items = []
+
         self._page = 0
         self._items_per_page = 0
+        self._show_scrollbar = False
 
+        self._scrollbar_top = 0
+        self._scrollbar_bottom = 0
+
+        self._slider_min_height = 2
         self._slider_height = 0
-        self._show_scroll_bar = False
+        self._slider_top = 0
+        self._slider_bottom = 0
 
-    def load(self):
-        self.is_using = True
+    def activate(self):
+        self.is_active = True
 
-    def unload(self):
-        self.is_using = False
+    def deactivate(self):
+        self.is_active = False
 
     def _cal_items_per_page(self):
         items_per_page = int((self._display.height - self._y) / (self._font_size + self._spacing))
@@ -157,28 +163,41 @@ class ListView:
         print_log(f"List view item per page: {items_per_page}, total: {len(self._items)}")
         return items_per_page
 
-    def _cal_slider_height(self):
-        return int(self._items_per_page / len(self._items) * 35 + 5)  # todo what is 35 and 5 here?
+    def _cal_scrollbar_param(self):
+        self._scrollbar_top = self._y + 5 + 3  # 5 is the height of arrow, 3 is the margin between arrow and scrollbar
+        self._scrollbar_bottom = self._display.height - 5 - 3
+        self._slider_top = self._scrollbar_top + 1  # offset 1 pixel from scrollbar outline
+        self._slider_bottom = self._scrollbar_bottom - 1
+        self._slider_height = int(self._items_per_page / len(self._items) * (
+                self._slider_bottom - self._slider_top - self._slider_min_height) + self._slider_min_height)
 
     def _clear_old(self):
         self._display.fill_rect(0, self._y, self._display.width, self._display.height - self._y, 0)
-        self._display.set_updated()
+        self._display.set_update()
 
-    def _draw_scroll_bar(self):
+    def _draw_scrollbar(self):
+        scrollbar_width = 5
+        slider_width = scrollbar_width - 2
         assert self._items_per_page < len(self._items), "No need to draw scroll bar"
-        slider_y = round(self._page / (len(self._items) - self._items_per_page) * (
-                46 - self._slider_height - self._y) + self._y + 9)
-        self._display.line(124, self._y + 9, 124, 54, 1)  # scroll bar background line
-        self._display.fill_rect(123, slider_y, 3, self._slider_height, 1)  # scroll bar slider
-        if self._page == 0:  # draw arrow on top
-            self._display.poly(121, self._y, self._arrow_h, 1, 0)
-        else:
-            self._display.poly(121, self._y, self._arrow_h, 1, 1)
 
-        if self._page == len(self._items) - self._items_per_page:  # draw arrow on bottom
-            self._display.poly(121, 58, self._arrow_l, 1, 0)
+        slider_y = round(self._page / (len(self._items) - self._items_per_page) * (
+                self._slider_bottom - self._slider_top - self._slider_height) + self._slider_top)
+        # scrollbar outline
+        self._display.rect(self._display.width - scrollbar_width - 1, self._scrollbar_top, scrollbar_width,
+                           self._scrollbar_bottom - self._scrollbar_top, 1)
+        # scrollbar slider
+        self._display.fill_rect(self._display.width - slider_width - 2, slider_y, slider_width,
+                                self._slider_height, 1)
+
+        if self._page == 0:  # draw arrow on top, 7 is the width of the arrow
+            self._display.poly(self._display.width - 7, self._y, self._arrow_top, 1, 0)
         else:
-            self._display.poly(121, 58, self._arrow_l, 1, 1)
+            self._display.poly(self._display.width - 7, self._y, self._arrow_top, 1, 1)
+
+        if self._page == len(self._items) - self._items_per_page:  # draw arrow on bottom, 6 is the height of the arrow
+            self._display.poly(self._display.width - 7, self._display.height - 6, self._arrow_bottom, 1, 0)
+        else:
+            self._display.poly(self._display.width - 7, self._display.height - 6, self._arrow_bottom, 1, 1)
 
     def _update_framebuffer(self, selection):
         for i in range(self._page, self._page + self._items_per_page):
@@ -189,9 +208,9 @@ class ListView:
             else:
                 self._display.text(" " + self._items[i], 0,
                                    self._y + (i - self._page) * (self._font_size + self._spacing))
-        if self._show_scroll_bar:
-            self._draw_scroll_bar()
-        self._display.set_updated()
+        if self._show_scrollbar:
+            self._draw_scrollbar()
+        self._display.set_update()
 
     def get_page(self):
         return self._page
@@ -212,9 +231,12 @@ class ListView:
     def set_items(self, items):
         self._items = items
         self._items_per_page = self._cal_items_per_page()
-        self._show_scroll_bar = True if self._items_per_page < len(self._items) else False
+        if self._items_per_page < len(self._items):
+            self._show_scrollbar = True
+            self._cal_scrollbar_param()
+        else:
+            self._show_scrollbar = False
         self._page = 0  # set view index to first item
-        self._slider_height = self._cal_slider_height()
         self.set_selection(0)
 
     def set_attributes(self, y=None, spacing=None):
@@ -223,21 +245,27 @@ class ListView:
             self._y = y
         if spacing is not None:
             self._spacing = spacing
+        if self._items_per_page < len(self._items):
+            self._show_scrollbar = True
+            self._cal_scrollbar_param()
+        else:
+            self._show_scrollbar = False
         self.set_selection(0)
 
 
 class GraphView:
     def __init__(self, display):
         # init
+        # todo need update range handling
         self._display = display
         self._range_h_default = 65535
         self._range_l_default = 0
         self._range_update_period = 20
-        self.is_using = True
+        self.is_active = True
         self._refresh_period = 1000 // GlobalSettings.graph_refresh_rate
         self._last_refresh_time = 0
 
-        # dynamic
+        # attributes
         self._box_x = 0
         self._box_y = 10
         self._box_w = 128
@@ -245,13 +273,13 @@ class GraphView:
         self._show_box = False
         self._speed = 1
 
-        self._x = None
-        self._range_h = None
-        self._range_l = None
-        self._range_h_temp = None
-        self._range_l_temp = None
-        self._last_x = None
-        self._last_y = None
+        self._x = self._box_x + 1
+        self._range_h = self._range_h_default
+        self._range_l = self._range_l_default
+        self._range_h_temp = self._range_h_default
+        self._range_l_temp = self._range_l_default
+        self._last_x = -1
+        self._last_y = -1
 
     def set_attributes(self, box_x=None, box_y=None, box_w=None, box_h=None, speed=None, show_box=None):
         if box_x is not None:
@@ -267,8 +295,11 @@ class GraphView:
         if show_box is not None:
             self._show_box = show_box
 
-    def load(self):
-        self.is_using = True
+    def activate(self):
+        self.is_active = True
+
+    def deactivate(self):
+        self.is_active = False
         self._x = self._box_x + 1
         self._range_h = self._range_h_default
         self._range_l = self._range_l_default
@@ -276,10 +307,6 @@ class GraphView:
         self._range_l_temp = self._range_l_default
         self._last_x = -1
         self._last_y = -1
-        # not updating framebuffer automatically, because of no data
-
-    def unload(self):
-        self.is_using = False
 
     def _g_clean_ahead(self):
         # function usage: fill_rect(x, y, w, h, color)
@@ -354,7 +381,7 @@ class GraphView:
         self._last_x = self._x
         self._last_y = y
         # self._display.set_update()
-        self._display.set_update_now()
+        self._display.set_update(force=True)
 
         # print(f"raw: {value}, norm:{normalized_value}, xy: {self._x}, {y}")
         # print(f"upper_t: {self._range_h_temp}, lower_t: {self._range_l_temp}")
@@ -374,13 +401,13 @@ class MenuView:
         self._icon_buf_history = framebuf.FrameBuffer(icon_history, 32, 32, framebuf.MONO_VLSB)
 
         self._display = display
-        self.is_using = True
+        self.is_active = True
 
-    def load(self):
-        self.is_using = True
+    def activate(self):
+        self.is_active = True
 
-    def unload(self):
-        self.is_using = False
+    def deactivate(self):
+        self.is_active = False
 
     def _update_framebuffer(self, text, icon_buf, selection):
         self._display.clear()
@@ -393,7 +420,7 @@ class MenuView:
         self._display.rect(78, 61, 2, 2, 1)
         x = 42 + selection * 12
         self._display.fill_rect(x, 60, 4, 4, 1)
-        self._display.set_updated()
+        self._display.set_update()
 
     def set_selection(self, selection):
         if selection == 0:

@@ -65,11 +65,11 @@ class History:
             self._page = self._listview_history_list.get_page()  # save current page for switching back
             if self._selection == 0:
                 self._rotary_encoder.unset_rotate_irq()
-                self._view.unload_all()
+                self._view.deactivate_all()
                 self._state_machine.set(self._state_machine.main_menu.enter)
             else:
                 self._rotary_encoder.unset_rotate_irq()
-                self._view.unload_all()
+                self._view.deactivate_all()
                 self._state_machine.set(self._show_data_enter)
 
     def _show_data_enter(self):
@@ -103,12 +103,12 @@ class History:
     def _show_data_handler(self):
         event = self._rotary_encoder.get_event()
         if event == EncoderEvent.PRESS:
-            self._view.unload_all()
+            self._view.deactivate_all()
             self._state_machine.set(self._show_history_enter)
 
     def _exit(self):
         # clean up resources and unset irq
-        self._view.unload_all()
+        self._view.deactivate_all()
         self._rotary_encoder.unset_rotate_irq()
         self._display.clear()
         self._selection = 0  # reset selected index

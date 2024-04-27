@@ -44,4 +44,4 @@ if __name__ == "__main__":
 
     while True:
         state_machine.run()
-        view.show()
+        view.refresh()

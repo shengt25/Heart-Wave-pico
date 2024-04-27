@@ -39,5 +39,5 @@ class MainMenu:
             else:
                 raise ValueError("Invalid selection index")
             self._rotary_encoder.unset_rotate_irq()
-            self._view.unload_all()
+            self._view.deactivate_all()
 

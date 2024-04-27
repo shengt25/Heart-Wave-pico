@@ -28,14 +28,14 @@ class HR:
         self._text_info = self._view.add_text(text="--- BPM", y=64 - 8)
 
         # other
-        self._heart_sensor.set_timer_irq()
+        # self._heart_sensor.set_timer_irq()
         self._state_machine.set(self._measure)
 
     def _measure(self):
         # data process
-        while self._heart_sensor.sensor_buffer.has_data():
-            value = self._heart_sensor.sensor_buffer.get()
-            # self.hr = ...
+        # while self._heart_sensor.sensor_buffer.has_data():
+        #     value = self._heart_sensor.sensor_buffer.get()
+        #     # self.hr = ...
 
         # update text
         if self.hr != 0:

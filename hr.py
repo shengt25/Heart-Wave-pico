@@ -27,11 +27,11 @@ class HR:
         self._graph.set_attributes(box_y=10, box_h=40)
 
         self._textview_heading = self._view.add_text()
-        self._textview_heading.set_attributes(x=0, y=0)
+        self._textview_heading.set_attributes(y=0, invert=True)
         self._textview_heading.set_text("Heart Rate")
 
         self._textview_exit = self._view.add_text()
-        self._textview_exit.set_attributes(x=0, y=64 - 10)
+        self._textview_exit.set_attributes(y=64 - 10)
         self._textview_exit.set_text("Press to exit")
 
         # other

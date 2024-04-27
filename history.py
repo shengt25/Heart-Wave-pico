@@ -41,11 +41,11 @@ class History:
         print_log("History: history list")
         # ui
         self._textview_history_heading = self._view.add_text()
-        self._textview_history_heading.set_attributes(x=0, y=0)
+        self._textview_history_heading.set_attributes(y=0, invert=True)
         self._textview_history_heading.set_text("History")
 
         self._listview_history_list = self._view.add_list()
-        self._listview_history_list.set_attributes(y=10)
+        self._listview_history_list.set_attributes(y=20)
         self._listview_history_list.set_items(self._history_list)
         self._listview_history_list.set_page(self._page)
         self._listview_history_list.set_selection(self._selection)
@@ -78,23 +78,23 @@ class History:
 
         # ui
         self._textview_data_heading = self._view.add_text()
-        self._textview_data_heading.set_attributes(x=0, y=0)
+        self._textview_data_heading.set_attributes(y=0)
         self._textview_data_heading.set_text(self._data["date"])
 
         self._textview_data_hr = self._view.add_text()
-        self._textview_data_hr.set_attributes(x=0, y=10)
+        self._textview_data_hr.set_attributes(y=10)
         self._textview_data_hr.set_text("HR: " + self._data["hr"])
 
         self._textview_data_hrv = self._view.add_text()
-        self._textview_data_hrv.set_attributes(x=0, y=20)
+        self._textview_data_hrv.set_attributes(y=20)
         self._textview_data_hrv.set_text("HRV: " + self._data["hrv"])
 
         self._textview_data_sdnn = self._view.add_text()
-        self._textview_data_sdnn.set_attributes(x=0, y=30)
+        self._textview_data_sdnn.set_attributes(y=30)
         self._textview_data_sdnn.set_text("SDNN: " + self._data["sdnn"])
 
         self._textview_data_rmssd = self._view.add_text()
-        self._textview_data_rmssd.set_attributes(x=0, y=40)
+        self._textview_data_rmssd.set_attributes(y=40)
         self._textview_data_rmssd.set_text("RMSSD: " + self._data["rmssd"])
 
         # other

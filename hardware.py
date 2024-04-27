@@ -106,6 +106,7 @@ class SSD1306_I2C(SSD1306_I2C_):
     def __init__(self, width, height, i2c, max_refresh_rate):
         self.width = width
         self.height = height
+        self.FONT_HEIGHT = 8
         self._updated = False
         self._update_force = False  # force update once regardless of refresh rate
         self._last_update_time = 0

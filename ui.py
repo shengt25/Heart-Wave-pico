@@ -87,11 +87,10 @@ class View:
 class TextView:
     def __init__(self, display):
         self._display = display
-
-        # dynamic
-        self._x = 0
+        self._font_height = display.FONT_HEIGHT
+        # attributes
         self._y = 0
-        self._inverse = False
+        self._invert = False
         self._text = ""
         self._is_active = True
 
@@ -105,14 +104,15 @@ class TextView:
         return self._is_active
 
     def _clear_old(self):
-        self._display.text(self._text, self._x, self._y, 0)
+        self._display.text(self._text, 0, self._y, 0)
         self._display.set_update()
 
     def _update_framebuffer(self):
-        if self._inverse:
-            self._display.text(self._text, self._x, self._y, 0)
+        if self._invert:
+            self._display.fill_rect(0, self._y, self._display.width, self._font_height + 2, 1)
+            self._display.text(self._text, 0, self._y + 1, 0)
         else:
-            self._display.text(self._text, self._x, self._y, 1)
+            self._display.text(self._text, 0, self._y, 1)
         self._display.set_update()
 
     def set_text(self, text):
@@ -121,21 +121,19 @@ class TextView:
         self._text = text
         self._update_framebuffer()
 
-    def set_attributes(self, x=None, y=None, inverse=None):
+    def set_attributes(self, y=None, invert=None):
         self._clear_old()
-        if x is not None:
-            self._x = x
         if y is not None:
             self._y = y
-        if inverse is not None:
-            self._inverse = inverse
+        if invert is not None:
+            self._invert = invert
         self._update_framebuffer()
 
 
 class ListView:
     def __init__(self, display):
         self._display = display
-        self._font_size = 7
+        self._font_height = display.FONT_HEIGHT
         self._arrow_top = array.array('H', [3, 0, 0, 5, 6, 5])  # coordinates array of the poly vertex
         self._arrow_bottom = array.array('H', [0, 0, 6, 0, 3, 5])
         self._is_active = False
@@ -167,8 +165,8 @@ class ListView:
         return self._is_active
 
     def _cal_items_per_page(self):
-        items_per_page = int((self._display.height - self._y) / (self._font_size + self._spacing))
-        if items_per_page * (self._font_size + self._spacing) + self._font_size < self._display.height - self._y:
+        items_per_page = int((self._display.height - self._y) / (self._font_height + self._spacing))
+        if items_per_page * (self._font_height + self._spacing) + self._font_height < self._display.height - self._y:
             items_per_page += 1
         if items_per_page > len(self._items):
             items_per_page = len(self._items)
@@ -220,10 +218,10 @@ class ListView:
             print_log(f"List view showing: {i} / {len(self._items) - 1}")
             if i == selection:
                 self._display.text(">" + self._items[i], 0,
-                                   self._y + (i - self._page) * (self._font_size + self._spacing))
+                                   self._y + (i - self._page) * (self._font_height + self._spacing))
             else:
                 self._display.text(" " + self._items[i], 0,
-                                   self._y + (i - self._page) * (self._font_size + self._spacing))
+                                   self._y + (i - self._page) * (self._font_height + self._spacing))
         if self._show_scrollbar:
             self._draw_scrollbar()
         self._display.set_update()
@@ -245,6 +243,7 @@ class ListView:
         self.set_selection(self._page)
 
     def set_items(self, items):
+        self._clear_old()
         self._items = items
         self._items_per_page = self._cal_items_per_page()
         self._set_scrollbar_param()

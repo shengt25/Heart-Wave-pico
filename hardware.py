@@ -14,7 +14,7 @@ class EncoderEvent:
 class Hardware:
     def __init__(self):
         self.display = init_display()
-        self.rotary_encoder = RotaryEncoder(btn_debounce_ms=50)
+        self.rotary_encoder = RotaryEncoder()
         self.heart_sensor = HeartSensor()
 
 
@@ -106,28 +106,27 @@ class SSD1306_I2C(SSD1306_I2C_):
     def __init__(self, width, height, i2c, max_refresh_rate):
         self.width = width
         self.height = height
+        self.FONT_HEIGHT = 8
         self._updated = False
-        self._update_now = False  # force update once regardless of refresh rate
+        self._update_force = False  # force update once regardless of refresh rate
         self._last_update_time = 0
         self._refresh_period = 1000 // max_refresh_rate
         super().__init__(width, height, i2c)
 
-    def show(self):
-        """Only show the screen when forced or update flag marked."""
-        if (time.ticks_ms() - self._last_update_time > self._refresh_period and self._updated) or self._update_now:
+    def refresh(self):
+        if (time.ticks_ms() - self._last_update_time > self._refresh_period and self._updated) or self._update_force:
             super().show()
             print_log("screen updated")
             self._last_update_time = time.ticks_ms()
             self._updated = False
-            self._update_now = False
+            self._update_force = False
 
-    def set_update_now(self):
-        """Force the screen to update once, regardless of refresh rate."""
-        self._update_now = True
-
-    def set_updated(self):
+    def set_update(self, force=False):
         """Mark the screen as updated, call show() in the main loop."""
-        self._updated = True
+        if force:
+            self._update_force = True
+        else:
+            self._updated = True
 
     def clear(self):
         self.fill(0)

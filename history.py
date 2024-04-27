@@ -40,13 +40,8 @@ class History:
     def _show_history_enter(self):
         print_log("History: history list")
         # ui
-        self._textview_history_heading = self._view.add_text()
-        self._textview_history_heading.set_attributes(x=0, y=0)
-        self._textview_history_heading.set_text("History")
-
-        self._listview_history_list = self._view.add_list()
-        self._listview_history_list.set_attributes(y=10)
-        self._listview_history_list.set_items(self._history_list)
+        self._textview_history_heading = self._view.add_text(text="History", y=0, invert=True)
+        self._listview_history_list = self._view.add_list(items=self._history_list, y=12)
         self._listview_history_list.set_page(self._page)
         self._listview_history_list.set_selection(self._selection)
 
@@ -65,11 +60,11 @@ class History:
             self._page = self._listview_history_list.get_page()  # save current page for switching back
             if self._selection == 0:
                 self._rotary_encoder.unset_rotate_irq()
-                self._view.unload_all()
+                self._view.deactivate_all()
                 self._state_machine.set(self._state_machine.main_menu.enter)
             else:
                 self._rotary_encoder.unset_rotate_irq()
-                self._view.unload_all()
+                self._view.deactivate_all()
                 self._state_machine.set(self._show_data_enter)
 
     def _show_data_enter(self):
@@ -77,25 +72,11 @@ class History:
         self._load_data()
 
         # ui
-        self._textview_data_heading = self._view.add_text()
-        self._textview_data_heading.set_attributes(x=0, y=0)
-        self._textview_data_heading.set_text(self._data["date"])
-
-        self._textview_data_hr = self._view.add_text()
-        self._textview_data_hr.set_attributes(x=0, y=10)
-        self._textview_data_hr.set_text("HR: " + self._data["hr"])
-
-        self._textview_data_hrv = self._view.add_text()
-        self._textview_data_hrv.set_attributes(x=0, y=20)
-        self._textview_data_hrv.set_text("HRV: " + self._data["hrv"])
-
-        self._textview_data_sdnn = self._view.add_text()
-        self._textview_data_sdnn.set_attributes(x=0, y=30)
-        self._textview_data_sdnn.set_text("SDNN: " + self._data["sdnn"])
-
-        self._textview_data_rmssd = self._view.add_text()
-        self._textview_data_rmssd.set_attributes(x=0, y=40)
-        self._textview_data_rmssd.set_text("RMSSD: " + self._data["rmssd"])
+        self._textview_data_heading = self._view.add_text(text=self._data["date"], y=0, invert=True)
+        self._textview_data_hr = self._view.add_text(text="HR: " + self._data["hr"], y=12)
+        self._textview_data_hrv = self._view.add_text(text="HRV: " + self._data["hrv"], y=22)
+        self._textview_data_sdnn = self._view.add_text(text="SDNN: " + self._data["sdnn"], y=32)
+        self._textview_data_rmssd = self._view.add_text(text="RMSSD: " + self._data["rmssd"], y=42)
 
         # other
         self._state_machine.set(self._show_data_handler)
@@ -103,12 +84,12 @@ class History:
     def _show_data_handler(self):
         event = self._rotary_encoder.get_event()
         if event == EncoderEvent.PRESS:
-            self._view.unload_all()
+            self._view.deactivate_all()
             self._state_machine.set(self._show_history_enter)
 
     def _exit(self):
         # clean up resources and unset irq
-        self._view.unload_all()
+        self._view.deactivate_all()
         self._rotary_encoder.unset_rotate_irq()
         self._display.clear()
         self._selection = 0  # reset selected index

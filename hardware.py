@@ -2,7 +2,8 @@ from machine import Pin, I2C, ADC
 from ssd1306 import SSD1306_I2C as SSD1306_I2C_
 import time
 from lib.piotimer import Piotimer
-from common import Fifo, print_log, GlobalSettings
+from common import print_log
+from data_processing import Fifo, DualBuffer
 
 
 class EncoderEvent:
@@ -12,18 +13,18 @@ class EncoderEvent:
 
 
 class Hardware:
-    def __init__(self):
-        self.display = init_display()
+    def __init__(self, display_refresh_rate=40, sensor_pin=26, sensor_sampling_rate=250):
+        self.display = init_display(refresh_rate=display_refresh_rate)
         self.rotary_encoder = RotaryEncoder()
-        self.heart_sensor = HeartSensor()
+        self.heart_sensor = HeartSensor(pin=sensor_pin, sampling_rate=sensor_sampling_rate)
 
 
 class HeartSensor:
-    def __init__(self):
-        self._adc = ADC(Pin(GlobalSettings.heart_sensor_pin))
-        self._sampling_rate = GlobalSettings.heart_sensor_sampling_rate
+    def __init__(self, pin=26, sampling_rate=250):
+        self._adc = ADC(Pin(pin))
+        self._sampling_rate = sampling_rate
         self._timer = None
-        self.sensor_fifo = Fifo(20)
+        self.sensor_buffer = DualBuffer(self._sampling_rate * 5)
 
     def set_timer_irq(self):
         self._timer = Piotimer(freq=self._sampling_rate, callback=self._sensor_handler)
@@ -33,7 +34,7 @@ class HeartSensor:
 
     def _sensor_handler(self, tid):
         value = self._adc.read_u16()
-        self.sensor_fifo.put(value)
+        self.sensor_buffer.put(value)
 
     def read(self):
         return self._adc.read_u16()
@@ -103,14 +104,14 @@ class RotaryEncoder:
 
 
 class SSD1306_I2C(SSD1306_I2C_):
-    def __init__(self, width, height, i2c, max_refresh_rate):
+    def __init__(self, width, height, i2c, refresh_rate):
         self.width = width
         self.height = height
         self.FONT_HEIGHT = 8
         self._updated = False
         self._update_force = False  # force update once regardless of refresh rate
         self._last_update_time = 0
-        self._refresh_period = 1000 // max_refresh_rate
+        self._refresh_period = 1000 // refresh_rate
         super().__init__(width, height, i2c)
 
     def refresh(self):
@@ -132,8 +133,8 @@ class SSD1306_I2C(SSD1306_I2C_):
         self.fill(0)
 
 
-def init_display(sda=14, scl=15, width=128, height=64):
+def init_display(sda=14, scl=15, width=128, height=64, refresh_rate=40):
     # https://docs.micropython.org/en/latest/esp8266/tutorial/ssd1306.html
     # https://docs.micropython.org/en/latest/library/framebuf.html
     i2c = I2C(1, scl=Pin(scl), sda=Pin(sda), freq=400000)
-    return SSD1306_I2C(width, height, i2c, GlobalSettings.display_max_refresh_rate)
+    return SSD1306_I2C(width, height, i2c, refresh_rate)

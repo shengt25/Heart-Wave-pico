@@ -11,9 +11,10 @@ class HR:
         # ui
         self._view = view
         self._graph = None
-        self._textview_heading = None
-        self._textview_info = None
+        self._text_heading = None
+        self._text_info = None
         # other
+        self.hr = 0
         self._state_machine = state_machine
 
     def enter(self):
@@ -22,9 +23,9 @@ class HR:
 
     def _measure_enter(self):
         # ui
-        self._textview_heading = self._view.add_text(text="HR Measure", y=0, invert=True)
+        self._text_heading = self._view.add_text(text="HR Measure", y=0, invert=True)
         self._graph = self._view.add_graph(y=14, h=64 - 14 - 12, show_box=False)
-        self._textview_info = self._view.add_text(text="--- BPM", y=64 - 8)
+        self._text_info = self._view.add_text(text="--- BPM", y=64 - 8)
 
         # other
         self._heart_sensor.set_timer_irq()
@@ -32,10 +33,21 @@ class HR:
 
     def _measure(self):
         # data process
-        while self._heart_sensor.sensor_fifo.has_data():
-            compute_value = self._heart_sensor.sensor_fifo.get()
+        while self._heart_sensor.sensor_buffer.has_data():
+            value = self._heart_sensor.sensor_buffer.get()
+            # self.hr = ...
 
-        # data graph
+        # update text
+        if self.hr != 0:
+            # padding for 3 digits
+            if self.hr >= 100:
+                self._text_info.set_text(f"{self.hr} BPM")
+            else:
+                self._text_info.set_text(f" {self.hr} BPM")
+        else:
+            self._text_info.set_text("--- BPM")
+
+        # update graph
         value = self._heart_sensor.read()
         self._graph.set_value(value)
 

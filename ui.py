@@ -1,7 +1,7 @@
 import array
 from icon import icon_hr, icon_hrv, icon_kubios, icon_history
 import framebuf
-from common import print_log, GlobalSettings
+from common import print_log
 import time
 
 
@@ -261,7 +261,7 @@ class ListView:
 
 
 class GraphView:
-    def __init__(self, display, x=0, y=12, w=128, h=40, speed=1, show_box=False):
+    def __init__(self, display, x=0, y=12, w=128, h=40, speed=1, refresh_rate=40, show_box=False):
         # init
         # todo need update range handling
         self._display = display
@@ -269,7 +269,7 @@ class GraphView:
         self._range_l_default = 0
         self._range_update_period = 20
         self._is_active = True
-        self._refresh_period = 1000 // GlobalSettings.graph_refresh_rate
+        self._refresh_period = 1000 // refresh_rate
         self._last_refresh_time = 0
 
         # attributes

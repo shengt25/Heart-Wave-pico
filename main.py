@@ -32,10 +32,11 @@ class StateMachine:
 if __name__ == "__main__":
     # settings:
     GlobalSettings.print_log = True
-    GlobalSettings.display_max_refresh_rate = 60
-    GlobalSettings.heart_sensor_pin = 26
+    GlobalSettings.heart_sensor_pin = 26  # ADC_0: 26, ADC_1: 27
+
+    GlobalSettings.display_max_refresh_rate = 40
     GlobalSettings.heart_sensor_sampling_rate = 250
-    GlobalSettings.graph_refresh_rate = 30
+    GlobalSettings.graph_refresh_rate = 40
 
     hardware = Hardware()
     view = View(hardware.display)
@@ -44,4 +45,4 @@ if __name__ == "__main__":
 
     while True:
         state_machine.run()
-        view.show()
+        view.refresh()

@@ -31,7 +31,7 @@ class HR:
         self._textview_heading.set_text("Heart Rate")
 
         self._textview_exit = self._view.add_text()
-        self._textview_exit.set_attributes(x=0, y=64-10)
+        self._textview_exit.set_attributes(x=0, y=64 - 10)
         self._textview_exit.set_text("Press to exit")
 
         # other
@@ -40,7 +40,7 @@ class HR:
 
     def _measure(self):
         # data process
-        if self._heart_sensor.sensor_fifo.has_data():
+        while self._heart_sensor.sensor_fifo.has_data():
             compute_value = self._heart_sensor.sensor_fifo.get()
 
         # data graph

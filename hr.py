@@ -12,7 +12,7 @@ class HR:
         self._view = view
         self._graph = None
         self._textview_heading = None
-        self._textview_exit = None
+        self._textview_info = None
         # other
         self._state_machine = state_machine
 
@@ -21,11 +21,10 @@ class HR:
         self._state_machine.set(self._measure_enter)
 
     def _measure_enter(self):
-        print_log("HR: measure")
         # ui
-        self._graph = self._view.add_graph(y=10, h=40)
-        self._textview_heading = self._view.add_text(text="Heart Rate", y=0, invert=True)
-        self._textview_exit = self._view.add_text(text="Press to exit", y=64 - 10)
+        self._textview_heading = self._view.add_text(text="HR Measure", y=0, invert=True)
+        self._graph = self._view.add_graph(y=14, h=64 - 14 - 12, show_box=False)
+        self._textview_info = self._view.add_text(text="--- BPM", y=64 - 8)
 
         # other
         self._heart_sensor.set_timer_irq()

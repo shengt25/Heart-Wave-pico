@@ -38,10 +38,9 @@ class History:
         self._state_machine.set(self._show_history_enter)
 
     def _show_history_enter(self):
-        print_log("History: history list")
         # ui
         self._textview_history_heading = self._view.add_text(text="History", y=0, invert=True)
-        self._listview_history_list = self._view.add_list(items=self._history_list, y=12)
+        self._listview_history_list = self._view.add_list(items=self._history_list, y=14)
         self._listview_history_list.set_page(self._page)
         self._listview_history_list.set_selection(self._selection)
 

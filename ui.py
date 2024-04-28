@@ -45,16 +45,16 @@ class View:
         print_log(f"new list view created, total: {len(self._list_views)}")
         return new_list_view
 
-    def add_graph(self, x=0, y=12, w=128, h=40, speed=1, refresh_rate=40, show_box=False):
+    def add_graph(self, x=0, y=12, w=128, h=40, speed=1, show_box=False):
         # find available graph view and return it
         for graph_view in self._graph_views:
             if not graph_view.is_active():
-                graph_view.reinit(x, y, w, h, speed, refresh_rate, show_box)
+                graph_view.reinit(x, y, w, h, speed, show_box)
                 graph_view.activate()
                 print_log(f"re-use graph view, total: {len(self._graph_views)}")
                 return graph_view
         # if no available view, create a new one
-        new_graph_view = GraphView(self._display, x, y, w, h, speed, refresh_rate, show_box)
+        new_graph_view = GraphView(self._display, x, y, w, h, speed, show_box)
         new_graph_view.activate()
         self._graph_views.append(new_graph_view)
         print_log(f"new graph view created, total: {len(self._graph_views)}")
@@ -261,7 +261,7 @@ class ListView:
 
 
 class GraphView:
-    def __init__(self, display, x=0, y=12, w=128, h=40, speed=1, refresh_rate=40, show_box=False):
+    def __init__(self, display, x=0, y=12, w=128, h=40, speed=1, show_box=False):
         # init
         # todo need update range handling
         self._display = display
@@ -269,8 +269,6 @@ class GraphView:
         self._range_l_default = 0
         self._range_update_period = 20
         self._is_active = True
-        self._refresh_period = 1000 // refresh_rate
-        self._last_refresh_time = 0
 
         # attributes
         self._box_x = x
@@ -393,9 +391,7 @@ class GraphView:
         # print(f"upper: {self._range_h}, lower: {self._range_l}\n")
 
     def set_value(self, value):
-        if time.ticks_ms() - self._last_refresh_time > self._refresh_period:
-            self._update_framebuffer(value)
-            self._last_refresh_time = time.ticks_ms()
+        self._update_framebuffer(value)
 
 
 class MenuView:

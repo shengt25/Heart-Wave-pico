@@ -24,45 +24,104 @@ class Fifo(Fifo_):
             self.tail = self.head
         return val
 
-
-class DualBuffer:
-    def __init__(self, size, typecode='H'):
-        self._buffer1 = array.array(typecode)
-        self._buffer2 = array.array(typecode)
-        for i in range(size):
-            self._buffer1.append(0)
-            self._buffer2.append(0)
-        self._active_buffer = self._buffer1
-        self._ptr = 0
-        self._switched = False
-
-    def put(self, value):
-        self._active_buffer[self._ptr] = value
-        self._ptr += 1
-        if self._ptr == len(self._active_buffer):
-            self._ptr = 0
-            self._active_buffer = self._buffer2 if self._active_buffer == self._buffer1 else self._buffer1
-            if not self._switched:
-                self._switched = True
-            else:
-                raise RuntimeError("DualBuffer: buffer overflow")
-
-    def is_switched(self):
-        return self._switched
-
-    def get_previous_buffer(self):
-        if self._active_buffer == self._buffer1:
-            return self._buffer2
+    def get_previous(self, step):
+        """Get data that counting 'step' from the current data to the past"""
+        if step >= self.size:
+            raise RuntimeError("Step is larger than the fifo size")
+        elif step + self.count() > self.size:
+            raise RuntimeError("Data is already overwritten")
         else:
-            return self._buffer1
+            ptr = ((self.tail - step) + self.size) % self.size
+            return self.data[ptr]
 
-    def get_buffer(self):
-        if self._switched:
-            self._switched = False
-            if self._active_buffer == self._buffer1:
-                return self._buffer2
+
+class IBICalculator:
+    def __init__(self, sensor_fifo, sampling_rate, min_hr=40, max_hr=180):
+        self._sensor_fifo = sensor_fifo
+        # init ibi array
+        self.ibi_fifo = Fifo(20, 'H')
+        self._window_side_length = int(sampling_rate * 0.75)
+        self._window_size = self._window_side_length * 2 + 1
+        self._count = 0
+        self._sum = 0
+
+        self._max = 0
+        self._peak_index = 0
+        self._last_peak_index = 0
+        self.state = self._state_init
+        self._max_ibi = 60 / min_hr * 1000
+        self._min_ibi = 60 / max_hr * 1000
+
+    def reinit(self):
+        self._count = 0
+        self._sum = 0
+        self._max = 0
+        self._peak_index = 0
+        self._last_peak_index = 0
+        self.ibi_fifo.clear()
+        self.state = self._state_init
+
+    def _state_init(self):
+        # wait until the first window is filled
+        while self._sensor_fifo.has_data():
+            if self._count < self._window_size:
+                self._sum += self._sensor_fifo.get()
+                self._count += 1
             else:
-                return self._buffer1
-        else:
-            raise RuntimeError("DualBuffer: buffer not switched yet")
+                self.state = self._state_below_thr
+                self._count = 0
+                break
 
+    def _cal_threshold(self):
+        self._sum -= self._sensor_fifo.get_previous(self._window_size)
+        self._sum += self._sensor_fifo.get()
+        threshold = int(self._sum / self._window_size)
+        threshold = threshold + (threshold >> 6)
+        value = self._sensor_fifo.get_previous(self._window_side_length)
+        self._count += 1
+        return value, threshold
+
+    def _state_below_thr(self):
+        while self._sensor_fifo.has_data():
+            value, threshold = self._cal_threshold()
+            if value > threshold:
+                self._max = 0
+                if self._last_peak_index == 0:
+                    self.state = self._state_above_thr_init
+                    break
+                else:
+                    self.state = self._state_above_thr
+                    break
+
+    def _state_above_thr(self):
+        while self._sensor_fifo.has_data():
+            value, threshold = self._cal_threshold()
+            if value > threshold and value > self._max:
+                self._max = value
+                self._peak_index = self._count
+
+            if value < threshold:
+                ibi = int((self._peak_index - self._last_peak_index) * 1000 / 250)
+                if ibi < 0:
+                    print("ibi is negative", self._peak_index, self._last_peak_index)
+                if self._min_ibi < ibi < self._max_ibi:
+                    self.ibi_fifo.put(ibi)
+                    self._last_peak_index = self._peak_index
+                else:
+                    self._last_peak_index = 0
+                self.state = self._state_below_thr
+                break
+
+    def _state_above_thr_init(self):
+        while self._sensor_fifo.has_data():
+            value, threshold = self._cal_threshold()
+            if value > threshold and value > self._max:
+                self._max = value
+                self._last_peak_index = self._count
+
+            if value < threshold:
+                self.state = self._state_below_thr
+                break
+
+    def run(self):
+        self.state()

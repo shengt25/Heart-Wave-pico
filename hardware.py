@@ -3,7 +3,7 @@ from ssd1306 import SSD1306_I2C as SSD1306_I2C_
 import time
 from lib.piotimer import Piotimer
 from common import print_log
-from data_processing import Fifo, DualBuffer
+from data_processing import Fifo
 
 
 class EncoderEvent:
@@ -24,7 +24,7 @@ class HeartSensor:
         self._adc = ADC(Pin(pin))
         self._sampling_rate = sampling_rate
         self._timer = None
-        self.sensor_buffer = DualBuffer(self._sampling_rate * 5)
+        self.sensor_fifo = Fifo(250 * 5, 'H')
 
     def set_timer_irq(self):
         self._timer = Piotimer(freq=self._sampling_rate, callback=self._sensor_handler)
@@ -32,9 +32,12 @@ class HeartSensor:
     def unset_timer_irq(self):
         self._timer.deinit()
 
+    def get_sampling_rate(self):
+        return self._sampling_rate
+
     def _sensor_handler(self, tid):
-        value = self._adc.read_u16()
-        self.sensor_buffer.put(value)
+        value = self._adc.read_u16() >> 2
+        self.sensor_fifo.put(value)
 
     def read(self):
         return self._adc.read_u16()

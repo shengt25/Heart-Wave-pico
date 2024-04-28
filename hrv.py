@@ -31,8 +31,8 @@ class HRV:
 
     def _measure(self):
         # data process
-        while self._heart_sensor.sensor_buffer.has_data():
-            compute_value = self._heart_sensor.sensor_buffer.get()
+        while self._heart_sensor.sensor_fifo.has_data():
+            compute_value = self._heart_sensor.sensor_fifo.get()
 
         # data graph
         value = self._heart_sensor.read()

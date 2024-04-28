@@ -31,7 +31,7 @@ class StateMachine:
 
 if __name__ == "__main__":
     # settings:
-    GlobalSettings.print_log = True
+    GlobalSettings.print_log = False
     GlobalSettings.heart_sensor_pin = 26  # ADC_0: 26, ADC_1: 27
 
     GlobalSettings.display_max_refresh_rate = 40

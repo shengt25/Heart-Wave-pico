@@ -1,7 +1,8 @@
 from hardware import HeartSensor, EncoderEvent
-from common import print_log
+from common import GlobalSettings,print_log
 import time
-
+from data_processing import peak_detector
+from array import array
 
 class HR:
     def __init__(self, hardware, state_machine, view):
@@ -15,6 +16,10 @@ class HR:
         self._textview_info = None
         # other
         self._state_machine = state_machine
+        
+        #data processing
+        self.time_sample = 0
+        self.value_array = array('i')
 
     def enter(self):
         print_log("HR: enter")
@@ -31,10 +36,16 @@ class HR:
         self._state_machine.set(self._measure)
 
     def _measure(self):
+        
         # data process
         while self._heart_sensor.sensor_fifo.has_data():
             compute_value = self._heart_sensor.sensor_fifo.get()
-
+            self.value_array.append(compute_value)
+            self.time_sample+=1
+            if self.time_sample%750 == 0:
+                peak_detector(self.value_array,3,GlobalSettings.heart_sensor_sampling_rate)
+                self.value_array = array('i')
+            
         # data graph
         value = self._heart_sensor.read()
         self._graph.set_value(value)

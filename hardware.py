@@ -88,10 +88,10 @@ class RotaryEncoder:
         if self._event_fifo.has_data():
             while self._event_fifo.has_data():
                 value = self._event_fifo.get()
-                if value == 0:  # press, clean fifo and exit
+                if value == 0:  # return press event, ignore the rest of the fifo (usually rotate event)
                     self._event_fifo.clear()
                     return EncoderEvent.PRESS
-                else:  # rotate, value is either -1 or 1
+                else:  # return otate event
                     self._cal_position(value)
             return EncoderEvent.ROTATE
         else:

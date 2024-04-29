@@ -1,6 +1,6 @@
 import time
 from hardware import EncoderEvent
-from common import print_log
+from utils import print_log
 
 
 class MainMenu:

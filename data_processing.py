@@ -40,13 +40,13 @@ class IBICalculator:
         # hardware
         self._sensor_fifo = sensor_fifo
         # init parameters
-        self._ibi_fifo = Fifo(20, 'H')
         self._sampling_rate = sampling_rate
         self._window_side_length = int(sampling_rate * 0.75)
         self._window_size = self._window_side_length * 2 + 1
         self._max_ibi = 60 / min_hr * 1000
         self._min_ibi = 60 / max_hr * 1000
-        # init variables
+        # data
+        self._ibi_fifo = Fifo(20, 'H')
         self._sum = 0
         self._max = 0
         self._last_rising_edge_diff = 0
@@ -64,6 +64,7 @@ class IBICalculator:
 
     def reinit(self):
         """Reinitialize the variables to start a new calculation"""
+        self._ibi_fifo.clear()
         self._sum = 0
         self._max = 0
         self._last_rising_edge_diff = 0

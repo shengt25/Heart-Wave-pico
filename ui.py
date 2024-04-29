@@ -2,7 +2,6 @@ import array
 from icon import icon_hr, icon_hrv, icon_kubios, icon_history
 import framebuf
 from utils import print_log
-import time
 
 
 class View:

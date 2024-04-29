@@ -1,5 +1,3 @@
-import time
-
 from main_menu import MainMenu
 from hr import HR
 from hrv import HRV
@@ -7,7 +5,6 @@ from kubios import Kubios
 from history import History
 from hardware import Hardware
 from ui import View
-from lib.piotimer import Piotimer
 from utils import GlobalSettings
 from data_processing import IBICalculator
 

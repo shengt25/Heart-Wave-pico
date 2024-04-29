@@ -134,7 +134,7 @@ class SSD1306_I2C(SSD1306_I2C_):
         Refresh the screen, call this in the main loop.
         It will only update the screen if the screen has been marked as updated by set_update() method.
         And the screen will only be updated at the refresh rate"""
-        if (time.ticks_ms() - self._last_update_time > self._refresh_period and self._updated) or self._update_force:
+        if (time.ticks_diff(time.ticks_ms(), self._last_update_time) > self._refresh_period and self._updated) or self._update_force:
             super().show()
             print_log("screen updated")
             self._last_update_time = time.ticks_ms()

@@ -75,15 +75,15 @@ class View:
     def refresh(self):
         self._display.refresh()
 
-    def deactivate_all(self):
+    def remove_all(self):
         for text_view in self._text_views:
-            text_view.deactivate()
+            text_view.remove()
         for list_view in self._list_views:
-            list_view.deactivate()
+            list_view.remove()
         for graph_view in self._graph_views:
-            graph_view.deactivate()
+            graph_view.remove()
         for menu_view in self._menu_views:
-            menu_view.deactivate()
+            menu_view.remove()
         self._display.clear()
 
 
@@ -107,7 +107,7 @@ class TextView:
         self._update_framebuffer()
         self._is_active = True
 
-    def deactivate(self):
+    def remove(self):
         self._clear_old()
         self._is_active = False
 
@@ -169,7 +169,7 @@ class ListView:
         self._update_framebuffer(0)
         self._is_active = True
 
-    def deactivate(self):
+    def remove(self):
         self._clear_old()
         self._is_active = False
 
@@ -265,9 +265,8 @@ class ListView:
 class GraphView:
     def __init__(self, display, x=0, y=12, w=128, h=40, speed=1, show_box=False):
         # init
-        # todo need update range handling
         self._display = display
-        self._range_h_default = 65535
+        self._range_h_default = 16384
         self._range_l_default = 0
         self._range_update_period = 20
         self._is_active = True
@@ -307,7 +306,7 @@ class GraphView:
     def activate(self):
         self._is_active = True
 
-    def deactivate(self):
+    def remove(self):
         self._display.fill_rect(self._box_x, self._box_y, self._box_w, self._box_h, 0)
         self._is_active = False
 
@@ -317,8 +316,7 @@ class GraphView:
     def set_value(self, value):
         self._update_framebuffer(value)
 
-    def _g_clear_ahead(self):
-        # function usage: fill_rect(x, y, w, h, color)
+    def _clear_ahead(self):
         # if: within the box's width
         # else: exceed the box's width: clean the part inside box, take the rest at the start and clean it
         clean_width = int(self._box_w / 4)
@@ -330,32 +328,18 @@ class GraphView:
                                     self._box_h - 2, 0)
             self._display.fill_rect(self._box_x + 1, self._box_y + 1, exceed_width - 2, self._box_h - 2, 0)
 
-    def _g_update_range(self, value):
-        # shirk the range
-        if self._range_h_temp < value < self._range_h_default:
-            self._range_h_temp = value
-        if self._range_l_temp > value > self._range_l_default:
-            self._range_l_temp = value
-
-    def _g_set_new_range(self):
-        self._range_h = self._range_h_temp
-        self._range_l = self._range_l_temp
-        # reset the temp range
-        self._range_h_temp = self._range_l_default
-        self._range_l_temp = self._range_h_default
-
-    def _g_normalize(self, value):
+    def _normalize(self, value):
         # use default when range is negative or zero
         if self._range_h <= self._range_l:
             return int((value - self._range_l) * self._box_h / (self._range_h_default - self._range_l_default))
         else:
             return int((value - self._range_l) * self._box_h / (self._range_h - self._range_l))
 
-    def _g_convert_coord(self, value):
+    def _convert_coord(self, value):
         new_value = - value + self._box_h + self._box_y
         return new_value
 
-    def _g_draw_box(self):
+    def _draw_outline_box(self):
         self._display.rect(self._box_x, self._box_y, self._box_w, self._box_h, 1)
 
     def _update_framebuffer(self, value):
@@ -368,27 +352,40 @@ class GraphView:
             self._last_x = -1
             self._last_y = -1
 
+        # update range
         if self._x % self._range_update_period == 0:
-            self._g_set_new_range()
+            self._range_h = self._range_h_temp
+            self._range_l = self._range_l_temp
+            # reset the temp range
+            self._range_h_temp = self._range_l_default
+            self._range_l_temp = self._range_h_default
 
-        # before drawing, data processing
-        self._g_update_range(value)
-        self._g_clear_ahead()
-        normalized_value = self._g_normalize(value)
-        y = self._g_convert_coord(normalized_value)
+        # shirk the range
+        if self._range_h_temp < value < self._range_h_default:
+            self._range_h_temp = value
+        if self._range_l_temp > value > self._range_l_default:
+            self._range_l_temp = value
+
+        self._clear_ahead()
+        normalized_value = self._normalize(value)
+        y = self._convert_coord(normalized_value)
+
         # limit y inside the box
         if y > self._box_y + self._box_h - 2:
             y = self._box_y + self._box_h - 2
         elif y <= self._box_y:
             y = self._box_y + 1
+
         # draw, ignore drawing with invalid last point
         if self._last_x != -1 and self._last_y != -1:
             self._display.line(self._last_x, self._last_y, self._x, y, 1)
         if self._show_box:
-            self._g_draw_box()
+            self._draw_outline_box()
+
         # update last point
         self._last_x = self._x
         self._last_y = y
+
         # self._display.set_update()
         self._display.set_update(force=True)
 
@@ -407,7 +404,7 @@ class MenuView:
         self._update_framebuffer(0)
         self._is_active = True
 
-    def deactivate(self):
+    def remove(self):
         self._display.fill(0)
         self._is_active = False
 

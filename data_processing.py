@@ -24,8 +24,9 @@ class Fifo(Fifo_):
             self.tail = self.head
         return val
 
-    def get_previous(self, step):
-        """Get data that counting 'step' from the current data to the past"""
+    def get_history(self, step):
+        """Get history data that counting 'step' samples from the current to the past
+        If the data is already overwritten, raises an exception."""
         if step >= self.size:
             raise RuntimeError("Step is larger than the fifo size")
         elif step + self.count() > self.size:
@@ -83,11 +84,11 @@ class IBICalculator:
 
     def _get_threshold_and_value(self):
         """Get the value at the center of the window in fifo history, and calculate the threshold"""
-        self._sum -= self._sensor_fifo.get_previous(self._window_size)
+        self._sum -= self._sensor_fifo.get_history(self._window_size)
         self._sum += self._sensor_fifo.get()
         threshold = int(self._sum / self._window_size)
         threshold = threshold + (threshold >> 6)  # threshold + threshold * 1.5625%
-        value = self._sensor_fifo.get_previous(self._window_side_length)  # get the value at the center of the window
+        value = self._sensor_fifo.get_history(self._window_side_length)  # get the value at the center of the window
         return value, threshold
 
     def _state_wait(self):

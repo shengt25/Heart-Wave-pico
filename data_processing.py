@@ -1,5 +1,3 @@
-import time
-import array
 from lib.fifo import Fifo as Fifo_
 from utils import print_log
 

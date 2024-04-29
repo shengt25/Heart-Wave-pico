@@ -1,7 +1,7 @@
 import array
 from icon import icon_hr, icon_hrv, icon_kubios, icon_history
 import framebuf
-from common import print_log
+from utils import print_log
 import time
 
 
@@ -113,6 +113,12 @@ class TextView:
     def is_active(self):
         return self._is_active
 
+    def set_text(self, text):
+        assert self._is_active is True, "Trying to update inactive TextView"
+        self._clear_old()
+        self._text = text
+        self._update_framebuffer()
+
     def _clear_old(self):
         if self._invert:
             self._display.fill_rect(0, self._y, self._display.width, self._font_height + 2, 0)
@@ -127,12 +133,6 @@ class TextView:
         else:
             self._display.text(self._text, 0, self._y, 1)
         self._display.set_update()
-
-    def set_text(self, text):
-        assert self._is_active is True, "Trying to update unused TextView"
-        self._clear_old()
-        self._text = text
-        self._update_framebuffer()
 
 
 class ListView:
@@ -173,47 +173,6 @@ class ListView:
 
     def is_active(self):
         return self._is_active
-
-    def _clear_old(self):
-        self._display.fill_rect(0, self._y, self._display.width, self._display.height - self._y, 0)
-        self._display.set_update()
-
-    def _draw_scrollbar(self):
-        scrollbar_width = 5
-        slider_width = scrollbar_width - 2
-        assert self._items_per_page < len(self._items), "No need to draw scroll bar"
-
-        slider_y = round(self._page / (len(self._items) - self._items_per_page) * (
-                self._slider_bottom - self._slider_top - self._slider_height) + self._slider_top)
-        # scrollbar outline
-        self._display.rect(self._display.width - scrollbar_width - 1, self._scrollbar_top, scrollbar_width,
-                           self._scrollbar_bottom - self._scrollbar_top, 1)
-        # scrollbar slider
-        self._display.fill_rect(self._display.width - slider_width - 2, slider_y, slider_width,
-                                self._slider_height, 1)
-
-        if self._page == 0:  # draw arrow on top, 7 is the width of the arrow
-            self._display.poly(self._display.width - 7, self._y, self._arrow_top, 1, 0)
-        else:
-            self._display.poly(self._display.width - 7, self._y, self._arrow_top, 1, 1)
-
-        if self._page == len(self._items) - self._items_per_page:  # draw arrow on bottom, 6 is the height of the arrow
-            self._display.poly(self._display.width - 7, self._display.height - 6, self._arrow_bottom, 1, 0)
-        else:
-            self._display.poly(self._display.width - 7, self._display.height - 6, self._arrow_bottom, 1, 1)
-
-    def _update_framebuffer(self, selection):
-        for i in range(self._page, self._page + self._items_per_page):
-            print_log(f"List view showing: {i} / {len(self._items) - 1}")
-            if i == selection:
-                self._display.text(">" + self._items[i], 0,
-                                   self._y + (i - self._page) * (self._font_height + self._spacing))
-            else:
-                self._display.text(" " + self._items[i], 0,
-                                   self._y + (i - self._page) * (self._font_height + self._spacing))
-        if self._show_scrollbar:
-            self._draw_scrollbar()
-        self._display.set_update()
 
     def get_page(self):
         return self._page
@@ -258,6 +217,47 @@ class ListView:
 
         self._page = 0  # set view index to first item
         self.set_selection(0)
+
+    def _clear_old(self):
+        self._display.fill_rect(0, self._y, self._display.width, self._display.height - self._y, 0)
+        self._display.set_update()
+
+    def _draw_scrollbar(self):
+        scrollbar_width = 5
+        slider_width = scrollbar_width - 2
+        assert self._items_per_page < len(self._items), "No need to draw scroll bar"
+
+        slider_y = round(self._page / (len(self._items) - self._items_per_page) * (
+                self._slider_bottom - self._slider_top - self._slider_height) + self._slider_top)
+        # scrollbar outline
+        self._display.rect(self._display.width - scrollbar_width - 1, self._scrollbar_top, scrollbar_width,
+                           self._scrollbar_bottom - self._scrollbar_top, 1)
+        # scrollbar slider
+        self._display.fill_rect(self._display.width - slider_width - 2, slider_y, slider_width,
+                                self._slider_height, 1)
+
+        if self._page == 0:  # draw arrow on top, 7 is the width of the arrow
+            self._display.poly(self._display.width - 7, self._y, self._arrow_top, 1, 0)
+        else:
+            self._display.poly(self._display.width - 7, self._y, self._arrow_top, 1, 1)
+
+        if self._page == len(self._items) - self._items_per_page:  # draw arrow on bottom, 6 is the height of the arrow
+            self._display.poly(self._display.width - 7, self._display.height - 6, self._arrow_bottom, 1, 0)
+        else:
+            self._display.poly(self._display.width - 7, self._display.height - 6, self._arrow_bottom, 1, 1)
+
+    def _update_framebuffer(self, selection):
+        for i in range(self._page, self._page + self._items_per_page):
+            print_log(f"List view showing: {i} / {len(self._items) - 1}")
+            if i == selection:
+                self._display.text(">" + self._items[i], 0,
+                                   self._y + (i - self._page) * (self._font_height + self._spacing))
+            else:
+                self._display.text(" " + self._items[i], 0,
+                                   self._y + (i - self._page) * (self._font_height + self._spacing))
+        if self._show_scrollbar:
+            self._draw_scrollbar()
+        self._display.set_update()
 
 
 class GraphView:
@@ -310,6 +310,9 @@ class GraphView:
 
     def is_active(self):
         return self._is_active
+
+    def set_value(self, value):
+        self._update_framebuffer(value)
 
     def _g_clean_ahead(self):
         # function usage: fill_rect(x, y, w, h, color)
@@ -386,13 +389,6 @@ class GraphView:
         # self._display.set_update()
         self._display.set_update(force=True)
 
-        # print(f"raw: {value}, norm:{normalized_value}, xy: {self._x}, {y}")
-        # print(f"upper_t: {self._range_h_temp}, lower_t: {self._range_l_temp}")
-        # print(f"upper: {self._range_h}, lower: {self._range_l}\n")
-
-    def set_value(self, value):
-        self._update_framebuffer(value)
-
 
 class MenuView:
     def __init__(self, display):
@@ -413,6 +409,9 @@ class MenuView:
 
     def is_active(self):
         return self._is_active
+
+    def set_selection(self, selection):
+        self._update_framebuffer(selection)
 
     def _update_framebuffer(self, selection):
         if selection == 0:
@@ -441,6 +440,3 @@ class MenuView:
         x = 42 + selection * 12
         self._display.fill_rect(x, 60, 4, 4, 1)
         self._display.set_update()
-
-    def set_selection(self, selection):
-        self._update_framebuffer(selection)

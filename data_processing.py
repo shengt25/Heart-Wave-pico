@@ -64,13 +64,13 @@ class IBICalculator:
 
     def reinit(self):
         """Reinitialize the variables to start a new calculation"""
-        self._debounce_count = 0
         self._sum = 0
         self._max = 0
         self._last_rising_edge_diff = 0
         self._rising_edge_diff = 0
         self._last_peak_index = 0
         self._peak_index = 0
+        self.state = self._state_wait
 
     def get_ibi_fifo(self):
         return self._ibi_fifo

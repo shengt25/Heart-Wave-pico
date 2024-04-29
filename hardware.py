@@ -2,7 +2,7 @@ from machine import Pin, I2C, ADC
 from ssd1306 import SSD1306_I2C as SSD1306_I2C_
 import time
 from lib.piotimer import Piotimer
-from common import print_log
+from utils import print_log
 from data_processing import Fifo
 
 
@@ -24,7 +24,7 @@ class HeartSensor:
         self._adc = ADC(Pin(pin))
         self._sampling_rate = sampling_rate
         self._timer = None
-        self.sensor_fifo = Fifo(250 * 5, 'H')
+        self._sensor_fifo = Fifo(250 * 5, 'H')
 
     def set_timer_irq(self):
         self._timer = Piotimer(freq=self._sampling_rate, callback=self._sensor_handler)
@@ -35,12 +35,20 @@ class HeartSensor:
     def get_sampling_rate(self):
         return self._sampling_rate
 
-    def _sensor_handler(self, tid):
-        value = self._adc.read_u16() >> 2
-        self.sensor_fifo.put(value)
+    def get_sensor_fifo(self):
+        """Return the sensor data FIFO object."""
+        return self._sensor_fifo
 
     def read(self):
+        """Read the current sensor value directly."""
         return self._adc.read_u16()
+
+    def _sensor_handler(self, tid):
+        # The sensor actually only has 14-bit resolution, but the ADC is set to 16-bit,
+        # so the value is shifted right by 2 to get the 14-bit value,
+        # to save memory and reduce calculation
+        value = self._adc.read_u16() >> 2
+        self._sensor_fifo.put(value)
 
 
 class RotaryEncoder:
@@ -58,26 +66,10 @@ class RotaryEncoder:
         self._loop_mode = False
         self._position = 0
 
-    def _cal_position(self, value):
-        if self._loop_mode:
-            self._position = (self._position + value) % self._items_count
-        else:
-            self._position = max(0, min(self._items_count - 1, self._position + value))
-
-    def _rotate_handler(self, pin):
-        if self._clk.value():
-            self._event_fifo.put(1)
-        else:
-            self._event_fifo.put(-1)
-
-    def _press_handler(self, pin):
-        current_time = time.ticks_ms()
-        if current_time - self._last_press_time > self._btn_debounce_ms:
-            self._event_fifo.put(0)
-            self._last_press_time = time.ticks_ms()
+    """public methods"""
 
     def set_rotate_irq(self, items_count, position=0, loop_mode=False):
-        """Set irq, max index, current position, and whether loop back or stop at limit."""
+        """Set irq, max index, current position, and whether loop back at limit, or stop."""
         self._items_count = items_count
         self._loop_mode = loop_mode
         self._position = position
@@ -105,6 +97,26 @@ class RotaryEncoder:
         else:
             return EncoderEvent.NONE
 
+    """private methods"""
+
+    def _cal_position(self, value):
+        if self._loop_mode:
+            self._position = (self._position + value) % self._items_count
+        else:
+            self._position = max(0, min(self._items_count - 1, self._position + value))
+
+    def _rotate_handler(self, pin):
+        if self._clk.value():
+            self._event_fifo.put(1)
+        else:
+            self._event_fifo.put(-1)
+
+    def _press_handler(self, pin):
+        current_time = time.ticks_ms()
+        if current_time - self._last_press_time > self._btn_debounce_ms:
+            self._event_fifo.put(0)
+            self._last_press_time = time.ticks_ms()
+
 
 class SSD1306_I2C(SSD1306_I2C_):
     def __init__(self, width, height, i2c, refresh_rate):
@@ -118,6 +130,10 @@ class SSD1306_I2C(SSD1306_I2C_):
         super().__init__(width, height, i2c)
 
     def refresh(self):
+        """
+        Refresh the screen, call this in the main loop.
+        It will only update the screen if the screen has been marked as updated by set_update() method.
+        And the screen will only be updated at the refresh rate"""
         if (time.ticks_ms() - self._last_update_time > self._refresh_period and self._updated) or self._update_force:
             super().show()
             print_log("screen updated")
@@ -126,7 +142,8 @@ class SSD1306_I2C(SSD1306_I2C_):
             self._update_force = False
 
     def set_update(self, force=False):
-        """Mark the screen as updated, call show() in the main loop."""
+        """Mark the screen as updated.
+        The option 'force' will update the screen at next 'refresh' regardless of the refresh rate, but only once."""
         if force:
             self._update_force = True
         else:

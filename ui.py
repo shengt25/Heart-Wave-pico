@@ -108,6 +108,7 @@ class TextView:
         self._is_active = True
 
     def deactivate(self):
+        self._clear_old()
         self._is_active = False
 
     def is_active(self):
@@ -169,6 +170,7 @@ class ListView:
         self._is_active = True
 
     def deactivate(self):
+        self._clear_old()
         self._is_active = False
 
     def is_active(self):
@@ -306,6 +308,7 @@ class GraphView:
         self._is_active = True
 
     def deactivate(self):
+        self._display.fill_rect(self._box_x, self._box_y, self._box_w, self._box_h, 0)
         self._is_active = False
 
     def is_active(self):
@@ -314,7 +317,7 @@ class GraphView:
     def set_value(self, value):
         self._update_framebuffer(value)
 
-    def _g_clean_ahead(self):
+    def _g_clear_ahead(self):
         # function usage: fill_rect(x, y, w, h, color)
         # if: within the box's width
         # else: exceed the box's width: clean the part inside box, take the rest at the start and clean it
@@ -370,7 +373,7 @@ class GraphView:
 
         # before drawing, data processing
         self._g_update_range(value)
-        self._g_clean_ahead()
+        self._g_clear_ahead()
         normalized_value = self._g_normalize(value)
         y = self._g_convert_coord(normalized_value)
         # limit y inside the box
@@ -405,6 +408,7 @@ class MenuView:
         self._is_active = True
 
     def deactivate(self):
+        self._display.fill(0)
         self._is_active = False
 
     def is_active(self):

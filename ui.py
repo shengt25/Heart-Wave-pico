@@ -136,7 +136,7 @@ class TextView:
 
 
 class ListView:
-    def __init__(self, display, items, y, spacing=2):
+    def __init__(self, display, items, y, spacing=2, read_mode=False):
         self._display = display
         self._font_height = display.FONT_HEIGHT
         self._arrow_top = array.array('H', [3, 0, 0, 5, 6, 5])  # coordinates array of the poly vertex
@@ -179,6 +179,8 @@ class ListView:
         return self._page
 
     def set_selection(self, selection):
+        if selection < 0 or selection > len(self._items) - 1:
+            raise ValueError("Invalid selection index")
         self._clear_old()
         # update page start index
         if selection < self._page:
@@ -188,6 +190,8 @@ class ListView:
         self._update_framebuffer(selection)
 
     def set_page(self, page):
+        if page < 0 or page > len(self._items) - self._items_per_page:
+            raise ValueError("Invalid page index")
         self._page = page
         self.set_selection(self._page)
 

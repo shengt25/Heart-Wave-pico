@@ -41,7 +41,7 @@ class HeartSensor:
 
     def read(self):
         """Read the current sensor value directly."""
-        return self._adc.read_u16()
+        return self._adc.read_u16() >> 2
 
     def _sensor_handler(self, tid):
         # The sensor actually only has 14-bit resolution, but the ADC is set to 16-bit,

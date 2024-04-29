@@ -1,4 +1,4 @@
-from common import print_log
+from utils import print_log
 from hardware import EncoderEvent
 
 
@@ -35,9 +35,9 @@ class History:
     def enter(self):
         print_log("History: enter")
         self._load_history_list()
-        self._state_machine.set(self._show_history_enter)
+        self._state_machine.set(self._show_history_init)
 
-    def _show_history_enter(self):
+    def _show_history_init(self):
         # ui
         self._textview_history_heading = self._view.add_text(text="History", y=0, invert=True)
         self._listview_history_list = self._view.add_list(items=self._history_list, y=14)
@@ -46,10 +46,10 @@ class History:
 
         # other
         self._rotary_encoder.set_rotate_irq(items_count=len(self._history_list), position=self._selection,
-                                            loop_mode=True)
-        self._state_machine.set(self._show_history_handler)
+                                            loop_mode=False)
+        self._state_machine.set(self._show_history)
 
-    def _show_history_handler(self):
+    def _show_history(self):
         event = self._rotary_encoder.get_event()
         if event == EncoderEvent.ROTATE:
             self._selection = self._rotary_encoder.get_position()
@@ -64,9 +64,9 @@ class History:
             else:
                 self._rotary_encoder.unset_rotate_irq()
                 self._view.deactivate_all()
-                self._state_machine.set(self._show_data_enter)
+                self._state_machine.set(self._show_data_init)
 
-    def _show_data_enter(self):
+    def _show_data_init(self):
         print_log("History: history data")
         self._load_data()
 
@@ -78,13 +78,13 @@ class History:
         self._textview_data_rmssd = self._view.add_text(text="RMSSD: " + self._data["rmssd"], y=42)
 
         # other
-        self._state_machine.set(self._show_data_handler)
+        self._state_machine.set(self._show_data)
 
-    def _show_data_handler(self):
+    def _show_data(self):
         event = self._rotary_encoder.get_event()
         if event == EncoderEvent.PRESS:
             self._view.deactivate_all()
-            self._state_machine.set(self._show_history_enter)
+            self._state_machine.set(self._show_history_init)
 
     def _exit(self):
         # clean up resources and unset irq

@@ -29,16 +29,16 @@ class View:
         print_log(f"new text view created, total: {len(self._text_views)}")
         return new_text_view
 
-    def add_list(self, items, y, spacing=2):
+    def add_list(self, items, y, spacing=2, read_only=False):
         # find available view and return it
         for list_view in self._list_views:
             if not list_view.is_active():
-                list_view.reinit(items, y, spacing)
+                list_view.reinit(items, y, spacing, read_only)
                 list_view.activate()
                 print_log(f"re-use list view, total: {len(self._list_views)}")
                 return list_view
         # no available list view, create a new one
-        new_list_view = ListView(self._display, items, y, spacing)
+        new_list_view = ListView(self._display, items, y, spacing, read_only)
         new_list_view.activate()
         self._list_views.append(new_list_view)
         print_log(f"new list view created, total: {len(self._list_views)}")
@@ -136,7 +136,7 @@ class TextView:
 
 
 class ListView:
-    def __init__(self, display, items, y, spacing=2, read_mode=False):
+    def __init__(self, display, items, y, spacing=2, read_only=False):
         self._display = display
         self._font_height = display.FONT_HEIGHT
         self._arrow_top = array.array('H', [3, 0, 0, 5, 6, 5])  # coordinates array of the poly vertex
@@ -152,17 +152,19 @@ class ListView:
         self._slider_height = 0
         self._slider_top = 0
         self._slider_bottom = 0
+        self._items = None
 
         # attributes
-        self._items = None
+        self._read_only = read_only
         self._y = y
         self._spacing = spacing
-        self.set_items(items)
+        self.set_items(items)  # IMPORTANT: set_items must be the last one, because it requires the above attributes
 
-    def reinit(self, items, y, spacing=2):
+    def reinit(self, items, y, spacing=2, read_only=False):
         self._y = y
         self._spacing = spacing
-        self.set_items(items)
+        self._read_only = read_only
+        self.set_items(items)  # IMPORTANT: set_items must be the last one, because it requires the above attributes
 
     def activate(self):
         self._update_framebuffer(0)
@@ -177,6 +179,12 @@ class ListView:
 
     def get_page(self):
         return self._page
+
+    def get_max_page(self):
+        return len(self._items) - self._items_per_page
+
+    def get_max_selection(self):
+        return len(self._items) - 1
 
     def set_selection(self, selection):
         if selection < 0 or selection > len(self._items) - 1:
@@ -254,12 +262,15 @@ class ListView:
     def _update_framebuffer(self, selection):
         for i in range(self._page, self._page + self._items_per_page):
             print_log(f"List view showing: {i} / {len(self._items) - 1}")
-            if i == selection:
-                self._display.text(">" + self._items[i], 0,
-                                   self._y + (i - self._page) * (self._font_height + self._spacing))
+            if self._read_only:
+                self._display.text(self._items[i], 0, self._y + (i - self._page) * (self._font_height + self._spacing))
             else:
-                self._display.text(" " + self._items[i], 0,
-                                   self._y + (i - self._page) * (self._font_height + self._spacing))
+                if i == selection:
+                    self._display.text(">" + self._items[i], 0,
+                                       self._y + (i - self._page) * (self._font_height + self._spacing))
+                else:
+                    self._display.text(" " + self._items[i], 0,
+                                       self._y + (i - self._page) * (self._font_height + self._spacing))
         if self._show_scrollbar:
             self._draw_scrollbar()
         self._display.set_update()

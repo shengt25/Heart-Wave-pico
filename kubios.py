@@ -1,5 +1,5 @@
 from hardware import HeartSensor, EncoderEvent
-from common import print_log
+from utils import print_log
 import time
 
 

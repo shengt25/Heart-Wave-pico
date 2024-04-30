@@ -135,7 +135,7 @@ class TextView:
 
 class ListView:
     """List elements: set_items, set_selection, set_page, remove.
-    get_page, get_max_page, get_selection, get_max_selection.
+    get_page, get_max_page, get_max_selection.
     Note: current selection is got from rotary encoder get_position() method, which is absolute position
     ListView don't have a current_selection attribute or method, it's managed by the caller(rotary encoder user)."""
 

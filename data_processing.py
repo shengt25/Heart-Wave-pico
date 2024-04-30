@@ -1,6 +1,7 @@
 from lib.fifo import Fifo as Fifo_
 from utils import print_log
-
+from math import sqrt
+    
 
 class Fifo(Fifo_):
     def __init__(self, size, typecode='H'):
@@ -195,3 +196,50 @@ class IBICalculator:
                     self._ibi_fifo.put(ibi)
                 self.state = self._state_below_threshold_simple
                 return
+            
+class HRVCalculator:
+    def __init__(self,IBI_list):
+        self._IBI_list = IBI_list
+        
+    def _calculate_results(self):
+        #HR
+        average_HR = 0
+        for HR in self._IBI_list:
+            average_HR	+= HR
+        average_HR /= len(self._IBI_list)
+        average_HR = 60000 / average_HR
+        
+        #PPI
+        minimum = 9999999
+        maximum = 0
+        for beat in self._IBI_list:
+            if beat > maximum:
+                maximum = beat
+            if beat < minimum:
+                minimum = beat
+        PPI = maximum - minimum
+        
+        #RMSSD
+        average = 0
+        for i in range(1,len(self._IBI_list),1):
+            difference = (self._IBI_list[i] - self._IBI_list[i-1]) ** 2
+            average += difference
+        average /= len(self._IBI_list) - 1
+        RMSSD = sqrt(average)
+        
+        mean_val = 0
+        for i in self._IBI_list:
+            mean_val += i
+        mean_val /= len(self._IBI_list)
+        variance = 0
+        for i in self._IBI_list:
+            variance += (i-mean_val)**2
+        variance /= (len(self._IBI_list)-1)
+        variance = variance** 0.5
+        SDNN = variance
+        
+        #I could've probably done this all in one go but I decided not to give anybody who will read this nightmares.
+        return round(average_HR,2),round(PPI,2),round(RMSSD,2),round(SDNN,2)
+        
+        
+            

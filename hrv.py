@@ -1,7 +1,7 @@
 from hardware import EncoderEvent
 from utils import print_log, pico_rom_stat
 import time
-
+from data_processing import HRVCalculator
 """
 1. _state_xxx_init
    1.1 initialize variables, create ui elements, set up interrupt/timer, etc
@@ -154,16 +154,16 @@ class HRV:
     def _state_show_result_init(self):
         # todo
         # calculating result
-        hr = 0
-        ppi = 0
-        rmssd = 0
-        sdnn = 0
-
+        HRV_Calculator = HRVCalculator(self._ibi_list)
+        hr, ppi, rmssd,sdnn = HRV_Calculator._calculate_results()
+        
+        
+        
         # create new list elements
-        self._list_result = self._view.add_list(items=["HR: " + str(hr),
-                                                       "PPI: " + str(ppi),
-                                                       "RMSSD: " + str(rmssd),
-                                                       "SDNN: " + str(sdnn)], y=14, read_only=True)
+        self._list_result = self._view.add_list(items=["HR: " + str(hr) + " BPM",
+                                                       "PPI: " + str(ppi) + " ms",
+                                                       "RMSSD: " + str(rmssd) + " ms",
+                                                       "SDNN: " + str(sdnn) + " ms"], y=14, read_only=True)
         # todo
         # save result
 

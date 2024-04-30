@@ -1,6 +1,6 @@
 import time
 from hardware import EncoderEvent
-from utils import print_log
+from utils import print_log, pico_rom_stat
 from hrv import HRV
 
 """
@@ -57,6 +57,7 @@ class Kubios(HRV):
 
         # todo
         # save result
+        print(f"Free storage: {pico_rom_stat()} KB")
 
         # goto next state (a loop)
         self._state_machine.set(self._state_show_result_loop)

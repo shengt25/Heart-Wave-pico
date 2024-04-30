@@ -1,5 +1,5 @@
 from hardware import EncoderEvent
-from utils import print_log
+from utils import print_log, pico_rom_stat
 import time
 
 """
@@ -166,6 +166,8 @@ class HRV:
                                                        "SDNN: " + str(sdnn)], y=14, read_only=True)
         # todo
         # save result
+
+        print(f"Free storage: {pico_rom_stat()} KB")
 
         # goto next state (a loop)
         self._state_machine.set(self._state_show_result_loop)

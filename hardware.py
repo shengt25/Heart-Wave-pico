@@ -2,7 +2,7 @@ from machine import Pin, I2C, ADC
 from ssd1306 import SSD1306_I2C as SSD1306_I2C_
 import time
 from lib.piotimer import Piotimer
-from common import print_log
+from utils import print_log
 from data_processing import Fifo
 
 
@@ -24,23 +24,31 @@ class HeartSensor:
         self._adc = ADC(Pin(pin))
         self._sampling_rate = sampling_rate
         self._timer = None
-        self.sensor_fifo = Fifo(250 * 5, 'H')
+        self._sensor_fifo = Fifo(250 * 5, 'H')
 
-    def set_timer_irq(self):
+    def start(self):
         self._timer = Piotimer(freq=self._sampling_rate, callback=self._sensor_handler)
 
-    def unset_timer_irq(self):
+    def stop(self):
         self._timer.deinit()
 
     def get_sampling_rate(self):
         return self._sampling_rate
 
-    def _sensor_handler(self, tid):
-        value = self._adc.read_u16() >> 2
-        self.sensor_fifo.put(value)
+    def get_sensor_fifo(self):
+        """Return the sensor data FIFO object."""
+        return self._sensor_fifo
 
     def read(self):
-        return self._adc.read_u16()
+        """Read the current sensor value directly."""
+        return self._adc.read_u16() >> 2
+
+    def _sensor_handler(self, tid):
+        # The sensor actually only has 14-bit resolution, but the ADC is set to 16-bit,
+        # so the value is shifted right by 2 to get the 14-bit value,
+        # to save memory and reduce calculation
+        value = self._adc.read_u16() >> 2
+        self._sensor_fifo.put(value)
 
 
 class RotaryEncoder:
@@ -57,6 +65,39 @@ class RotaryEncoder:
         self._items_count = 0
         self._loop_mode = False
         self._position = 0
+
+    """public methods"""
+
+    def set_rotate_irq(self, items_count, position=0, loop_mode=False):
+        """Set irq, max index, current position, and whether loop back at limit, or stop."""
+        self._items_count = items_count
+        self._loop_mode = loop_mode
+        self._position = position
+        self._dt.irq(trigger=Pin.IRQ_RISING, handler=self._rotate_handler, hard=True)
+
+    def unset_rotate_irq(self):
+        self._dt.irq(handler=None)
+
+    def get_position(self):
+        """Get the current absolute position of the encoder."""
+        print_log("Encoder position:" + str(self._position))
+        return self._position
+
+    def get_event(self):
+        """Event needs to be got in the main loop and fast, to avoid fifo overflow."""
+        if self._event_fifo.has_data():
+            while self._event_fifo.has_data():
+                value = self._event_fifo.get()
+                if value == 0:  # return press event, ignore the rest of the fifo (usually rotate event)
+                    self._event_fifo.clear()
+                    return EncoderEvent.PRESS
+                else:  # return otate event
+                    self._cal_position(value)
+            return EncoderEvent.ROTATE
+        else:
+            return EncoderEvent.NONE
+
+    """private methods"""
 
     def _cal_position(self, value):
         if self._loop_mode:
@@ -76,35 +117,6 @@ class RotaryEncoder:
             self._event_fifo.put(0)
             self._last_press_time = time.ticks_ms()
 
-    def set_rotate_irq(self, items_count, position=0, loop_mode=False):
-        """Set irq, max index, current position, and whether loop back or stop at limit."""
-        self._items_count = items_count
-        self._loop_mode = loop_mode
-        self._position = position
-        self._dt.irq(trigger=Pin.IRQ_RISING, handler=self._rotate_handler, hard=True)
-
-    def unset_rotate_irq(self):
-        self._dt.irq(handler=None)
-
-    def get_position(self):
-        """Get the current absolute position of the encoder."""
-        print_log("Encoder position:" + str(self._position))
-        return self._position
-
-    def get_event(self):
-        """Event needs to be got in the main loop and fast, to avoid fifo overflow."""
-        if self._event_fifo.has_data():
-            while self._event_fifo.has_data():
-                value = self._event_fifo.get()
-                if value == 0:  # press, clean fifo and exit
-                    self._event_fifo.clear()
-                    return EncoderEvent.PRESS
-                else:  # rotate, value is either -1 or 1
-                    self._cal_position(value)
-            return EncoderEvent.ROTATE
-        else:
-            return EncoderEvent.NONE
-
 
 class SSD1306_I2C(SSD1306_I2C_):
     def __init__(self, width, height, i2c, refresh_rate):
@@ -118,7 +130,11 @@ class SSD1306_I2C(SSD1306_I2C_):
         super().__init__(width, height, i2c)
 
     def refresh(self):
-        if (time.ticks_ms() - self._last_update_time > self._refresh_period and self._updated) or self._update_force:
+        """
+        Refresh the screen, call this in the main loop.
+        It will only update the screen if the screen has been marked as updated by set_update() method.
+        And the screen will only be updated at the refresh rate"""
+        if (time.ticks_diff(time.ticks_ms(), self._last_update_time) > self._refresh_period and self._updated) or self._update_force:
             super().show()
             print_log("screen updated")
             self._last_update_time = time.ticks_ms()
@@ -126,7 +142,8 @@ class SSD1306_I2C(SSD1306_I2C_):
             self._update_force = False
 
     def set_update(self, force=False):
-        """Mark the screen as updated, call show() in the main loop."""
+        """Mark the screen as updated.
+        The option 'force' will update the screen at next 'refresh' regardless of the refresh rate, but only once."""
         if force:
             self._update_force = True
         else:

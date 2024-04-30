@@ -1,7 +1,5 @@
-import time
-import array
 from lib.fifo import Fifo as Fifo_
-from common import print_log
+from utils import print_log
 
 
 class Fifo(Fifo_):
@@ -24,8 +22,9 @@ class Fifo(Fifo_):
             self.tail = self.head
         return val
 
-    def get_previous(self, step):
-        """Get data that counting 'step' from the current data to the past"""
+    def get_history(self, step):
+        """Get history data that counting 'step' samples from the current to the past
+        If the data is already overwritten, raises an exception."""
         if step >= self.size:
             raise RuntimeError("Step is larger than the fifo size")
         elif step + self.count() > self.size:
@@ -37,97 +36,162 @@ class Fifo(Fifo_):
 
 class IBICalculator:
     def __init__(self, sensor_fifo, sampling_rate, min_hr=40, max_hr=180):
+        # hardware
         self._sensor_fifo = sensor_fifo
-        # init ibi array
-        self.ibi_fifo = Fifo(20, 'H')
+        # init parameters
         self._sampling_rate = sampling_rate
         self._window_side_length = int(sampling_rate * 0.75)
         self._window_size = self._window_side_length * 2 + 1
         self._max_ibi = 60 / min_hr * 1000
         self._min_ibi = 60 / max_hr * 1000
-
-        self._debounce_samples = 10
-        self._count = 0
+        # data
+        self._ibi_fifo = Fifo(20, 'H')
         self._sum = 0
         self._max = 0
-        self._last_thr_index = 0
-        self._thr_index = 0
+        self._last_rising_edge_diff = 0
+        self._rising_edge_diff = 0
         self._last_peak_index = 0
         self._peak_index = 0
-
+        # settings
+        self._debounce_window = 10
+        self._debounce_count = 0
+        self._simple_version = False  # see comments in _state_below_threshold_simple
+        # first state
         self.state = self._state_wait
 
+    """public methods"""
+
     def reinit(self):
-        self._count = 0
+        """Reinitialize the variables to start a new calculation"""
+        self._ibi_fifo.clear()
         self._sum = 0
         self._max = 0
-        self._last_thr_index = 0
-        self._thr_index = 0
+        self._last_rising_edge_diff = 0
+        self._rising_edge_diff = 0
         self._last_peak_index = 0
         self._peak_index = 0
+        self.state = self._state_wait
 
-    def _state_wait(self):
-        while self._sensor_fifo.has_data():
-            if self._thr_index < self._window_size:  # borrow _thr_index to count the number of data points
-                self._sum += self._sensor_fifo.get()
-                self._thr_index += 1
-            else:
-                self._thr_index = 0
-                self.state = self._state_below_thr
-                break
-
-    def _cal_threshold(self):
-        self._sum -= self._sensor_fifo.get_previous(self._window_size)
-        self._sum += self._sensor_fifo.get()
-        threshold = int(self._sum / self._window_size)
-        threshold = threshold + (threshold >> 6)
-        value = self._sensor_fifo.get_previous(self._window_side_length)
-        print(value, threshold)
-        return value, threshold
-
-    def _state_below_thr(self):
-        while self._sensor_fifo.has_data():
-            value, threshold = self._cal_threshold()
-            self._thr_index += 1
-            if value > threshold:
-                self._last_peak_index = self._peak_index
-                self._last_thr_index = self._thr_index
-                self._max = 0
-                self._thr_index = 0
-                self._peak_index = 0
-                # print("above thr")
-                self.state = self._state_above_thr
-                return
-
-    def _state_above_thr(self):
-        while self._sensor_fifo.has_data():
-            value, threshold = self._cal_threshold()
-            self._thr_index += 1
-            if value > threshold and value > self._max:
-                self._max = value
-                self._peak_index = self._thr_index
-
-            if value < threshold:
-
-                # if self._max == 0:
-                #     print("max is 0")
-                # if self._peak_index == 0:
-                #     print("peak index is 0")
-
-                if self._last_peak_index == 0:
-                    # print("below thr, not calculating")
-                    self.state = self._state_below_thr
-                    return
-                else:
-                    data_points = self._last_thr_index - self._last_peak_index + self._peak_index
-                    ibi = int(data_points * 1000 / self._sampling_rate)
-                    if self._min_ibi < ibi < self._max_ibi:
-                        self.ibi_fifo.put(ibi)
-                    else:
-                        self._peak_index = 0
-                # print("below thr")
-                self.state = self._state_below_thr
-                return
+    def get_ibi_fifo(self):
+        return self._ibi_fifo
 
     def run(self):
         self.state()
+
+    """private methods"""
+
+    def _get_threshold_and_value(self):
+        """Get the value at the center of the window in fifo history, and calculate the threshold"""
+        self._sum -= self._sensor_fifo.get_history(self._window_size)
+        self._sum += self._sensor_fifo.get()
+        threshold = int(self._sum / self._window_size)
+        threshold = threshold + (threshold >> 6)  # threshold + threshold * 1.5625%
+        value = self._sensor_fifo.get_history(self._window_side_length)  # get the value at the center of the window
+        return value, threshold
+
+    def _state_wait(self):
+        """Wait for the data to fill the first window size, which is 1.5 seconds data"""
+        while self._sensor_fifo.has_data():
+            # borrow _rising_edge_diff to count the number of data points
+            if self._rising_edge_diff < self._window_size:
+                self._sum += self._sensor_fifo.get()
+                self._rising_edge_diff += 1
+            else:
+                self._rising_edge_diff = 0
+                if self._simple_version:
+                    self.state = self._state_below_threshold_simple
+                else:
+                    self.state = self._state_below_threshold
+                break
+
+    def _state_below_threshold(self):
+        # The while loop is to consume all the data in the fifo at once,
+        # not a real "while loop" that will block the system
+        while self._sensor_fifo.has_data():
+            value, threshold = self._get_threshold_and_value()
+            self._rising_edge_diff += 1
+
+            if value > threshold:
+                self._debounce_count += 1  # above threshold, start to debounce
+            else:
+                self._debounce_count = 0  # reset count if below threshold within the debounce window
+
+            # if the debounce window is reached, reset the debounce count and prepare to go to above threshold state
+            if self._debounce_count > self._debounce_window:
+                self._debounce_count = 0
+                self._last_peak_index = self._peak_index
+                self._last_rising_edge_diff = self._rising_edge_diff
+                self._max = 0
+                self._rising_edge_diff = 0
+                self._peak_index = 0
+                self.state = self._state_above_threshold
+                return
+
+    def _state_above_threshold(self):
+        # The while loop is to consume all the data in the fifo at once,
+        # not a real "while loop" that will block the system
+        while self._sensor_fifo.has_data():
+            value, threshold = self._get_threshold_and_value()
+            self._rising_edge_diff += 1
+            if value > threshold and value > self._max:
+                self._max = value
+                self._peak_index = self._rising_edge_diff
+
+            if value < threshold:
+                # last peak is invalid, not calculating but go back and wait for next threshold
+                if self._last_peak_index == 0 or self._last_rising_edge_diff == 0:
+                    self.state = self._state_below_threshold
+                    return
+                else:
+                    data_points = self._last_rising_edge_diff - self._last_peak_index + self._peak_index
+                    ibi = int(data_points * 1000 / self._sampling_rate)
+                    if self._min_ibi < ibi < self._max_ibi:
+                        self._ibi_fifo.put(ibi)
+                    # no need to reset peak_index and rising_edge_diff,
+                    # because they will be assigned to last_peak_index and last_rising_edge_diff in the next state
+                self.state = self._state_below_threshold
+                return
+
+    def _state_below_threshold_simple(self):
+        """
+        Another simpler version without debounce mechanism. The ibi validation will filter out the invalid data points,
+        but it does meaningless calculation for the invalid data points
+        Unused, for backup only"""
+        # The while loop is to consume all the data in the fifo at once,
+        # not a real "while loop" that will block the system
+        while self._sensor_fifo.has_data():
+            value, threshold = self._get_threshold_and_value()
+            self._rising_edge_diff += 1
+
+            if value > threshold:
+                self._debounce_count = 0
+                self._last_peak_index = self._peak_index
+                self._last_rising_edge_diff = self._rising_edge_diff
+                self._max = 0
+                self._rising_edge_diff = 0
+                self._peak_index = 0
+                self.state = self._state_above_threshold_simple
+                return
+
+    def _state_above_threshold_simple(self):
+        """
+        Another simpler version without debounce mechanism. The ibi validation will filter out the invalid data points,
+        but it does meaningless calculation for the invalid data points
+        Unused, for backup only"""
+        # The while loop is to consume all the data in the fifo at once,
+        # not a real "while loop" that will block the system
+        while self._sensor_fifo.has_data():
+            value, threshold = self._get_threshold_and_value()
+            self._rising_edge_diff += 1
+            if value > threshold and value > self._max:
+                self._max = value
+                self._peak_index = self._rising_edge_diff
+
+            if value < threshold:
+                # last peak is invalid, not calculating but go back and wait for next threshold
+                data_points = self._last_rising_edge_diff - self._last_peak_index + self._peak_index
+                ibi = int(data_points * 1000 / self._sampling_rate)
+                if self._min_ibi < ibi < self._max_ibi:
+                    self._ibi_fifo.put(ibi)
+                self.state = self._state_below_threshold_simple
+                return

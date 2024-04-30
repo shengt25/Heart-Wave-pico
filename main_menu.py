@@ -1,6 +1,6 @@
 import time
 from hardware import EncoderEvent
-from common import print_log
+from utils import print_log
 
 
 class MainMenu:
@@ -39,5 +39,5 @@ class MainMenu:
             else:
                 raise ValueError("Invalid selection index")
             self._rotary_encoder.unset_rotate_irq()
-            self._view.deactivate_all()
+            self._view.remove_all()
 

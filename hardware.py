@@ -26,10 +26,10 @@ class HeartSensor:
         self._timer = None
         self._sensor_fifo = Fifo(250 * 5, 'H')
 
-    def set_timer_irq(self):
+    def start(self):
         self._timer = Piotimer(freq=self._sampling_rate, callback=self._sensor_handler)
 
-    def unset_timer_irq(self):
+    def stop(self):
         self._timer.deinit()
 
     def get_sampling_rate(self):

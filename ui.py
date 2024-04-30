@@ -5,6 +5,8 @@ from utils import print_log
 
 
 class View:
+    """Create text, list elements: add_text, add_list"""
+
     def __init__(self, display):
         self._display = display
         self.width = display.width
@@ -79,6 +81,8 @@ class View:
 
 
 class TextView:
+    """Text elements: set_text, remove"""
+
     def __init__(self, display, text, y, invert=False):
         self._display = display
         self._font_height = display.FONT_HEIGHT
@@ -130,6 +134,11 @@ class TextView:
 
 
 class ListView:
+    """List elements: set_items, set_selection, set_page, remove.
+    get_page, get_max_page, get_selection, get_max_selection.
+    Note: current selection is got from rotary encoder get_position() method, which is absolute position
+    ListView don't have a current_selection attribute or method, it's managed by the caller(rotary encoder user)."""
+
     def __init__(self, display, items, y, spacing=2, read_only=False):
         self._display = display
         self._font_height = display.FONT_HEIGHT

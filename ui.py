@@ -5,6 +5,8 @@ from utils import print_log
 
 
 class View:
+    """Create text, list elements: add_text, add_list"""
+
     def __init__(self, display):
         self._display = display
         self.width = display.width
@@ -19,12 +21,10 @@ class View:
         for text_view in self._text_views:
             if not text_view.is_active():
                 text_view.reinit(text, y, invert)
-                text_view.activate()
                 print_log(f"re-use text view, total: {len(self._text_views)}")
                 return text_view
         # no available text view, create a new one
         new_text_view = TextView(self._display, text, y, invert)
-        new_text_view.activate()
         self._text_views.append(new_text_view)
         print_log(f"new text view created, total: {len(self._text_views)}")
         return new_text_view
@@ -34,12 +34,10 @@ class View:
         for list_view in self._list_views:
             if not list_view.is_active():
                 list_view.reinit(items, y, spacing, read_only)
-                list_view.activate()
                 print_log(f"re-use list view, total: {len(self._list_views)}")
                 return list_view
         # no available list view, create a new one
         new_list_view = ListView(self._display, items, y, spacing, read_only)
-        new_list_view.activate()
         self._list_views.append(new_list_view)
         print_log(f"new list view created, total: {len(self._list_views)}")
         return new_list_view
@@ -49,12 +47,10 @@ class View:
         for graph_view in self._graph_views:
             if not graph_view.is_active():
                 graph_view.reinit(x, y, w, h, speed, show_box)
-                graph_view.activate()
                 print_log(f"re-use graph view, total: {len(self._graph_views)}")
                 return graph_view
         # if no available view, create a new one
         new_graph_view = GraphView(self._display, x, y, w, h, speed, show_box)
-        new_graph_view.activate()
         self._graph_views.append(new_graph_view)
         print_log(f"new graph view created, total: {len(self._graph_views)}")
         return new_graph_view
@@ -62,11 +58,9 @@ class View:
     def add_menu(self):
         for menu_view in self._menu_views:
             if not menu_view.is_active():
-                menu_view.activate()
                 print_log(f"re-use menu view, total: {len(self._menu_views)}")
                 return menu_view
         new_menu_view = MenuView(self._display)
-        new_menu_view.activate()
         self._menu_views.append(new_menu_view)
         print_log(f"new menu view created, total: {len(self._menu_views)}")
         return new_menu_view
@@ -87,6 +81,8 @@ class View:
 
 
 class TextView:
+    """Text elements: set_text, remove"""
+
     def __init__(self, display, text, y, invert=False):
         self._display = display
         self._font_height = display.FONT_HEIGHT
@@ -96,15 +92,13 @@ class TextView:
         self._text = text
         self._y = y
         self._invert = invert
+        self._activate()
 
     def reinit(self, text, y, invert=False):
         self._text = text
         self._y = y
         self._invert = invert
-
-    def activate(self):
-        self._update_framebuffer()
-        self._is_active = True
+        self._activate()
 
     def remove(self):
         self._clear_old()
@@ -118,6 +112,10 @@ class TextView:
         self._clear_old()
         self._text = text
         self._update_framebuffer()
+
+    def _activate(self):
+        self._update_framebuffer()
+        self._is_active = True
 
     def _clear_old(self):
         if self._invert:
@@ -136,6 +134,11 @@ class TextView:
 
 
 class ListView:
+    """List elements: set_items, set_selection, set_page, remove.
+    get_page, get_max_page, get_max_selection.
+    Note: current selection is got from rotary encoder get_position() method, which is absolute position
+    ListView don't have a current_selection attribute or method, it's managed by the caller(rotary encoder user)."""
+
     def __init__(self, display, items, y, spacing=2, read_only=False):
         self._display = display
         self._font_height = display.FONT_HEIGHT
@@ -159,16 +162,14 @@ class ListView:
         self._y = y
         self._spacing = spacing
         self.set_items(items)  # IMPORTANT: set_items must be the last one, because it requires the above attributes
+        self._activate()
 
     def reinit(self, items, y, spacing=2, read_only=False):
         self._y = y
         self._spacing = spacing
         self._read_only = read_only
         self.set_items(items)  # IMPORTANT: set_items must be the last one, because it requires the above attributes
-
-    def activate(self):
-        self._update_framebuffer(0)
-        self._is_active = True
+        self._activate()
 
     def remove(self):
         self._clear_old()
@@ -230,6 +231,10 @@ class ListView:
 
         self._page = 0  # set view index to first item
         self.set_selection(0)
+
+    def _activate(self):
+        self._update_framebuffer(0)
+        self._is_active = True
 
     def _clear_old(self):
         self._display.fill_rect(0, self._y, self._display.width, self._display.height - self._y, 0)
@@ -300,6 +305,7 @@ class GraphView:
         self._range_l_temp = self._range_l_default
         self._last_x = -1
         self._last_y = -1
+        self._activate()
 
     def reinit(self, x=0, y=12, w=128, h=40, speed=1, show_box=False):
         self._box_x = x
@@ -316,9 +322,7 @@ class GraphView:
         self._range_l_temp = self._range_l_default
         self._last_x = -1
         self._last_y = -1
-
-    def activate(self):
-        self._is_active = True
+        self._activate()
 
     def remove(self):
         self._display.fill_rect(self._box_x, self._box_y, self._box_w, self._box_h, 0)
@@ -329,6 +333,9 @@ class GraphView:
 
     def set_value(self, value):
         self._update_framebuffer(value)
+
+    def _activate(self):
+        self._is_active = True
 
     def _clear_ahead(self):
         # if: within the box's width
@@ -413,10 +420,7 @@ class MenuView:
 
         self._display = display
         self._is_active = True
-
-    def activate(self):
-        self._update_framebuffer(0)
-        self._is_active = True
+        self._activate()
 
     def remove(self):
         self._display.fill(0)
@@ -427,6 +431,10 @@ class MenuView:
 
     def set_selection(self, selection):
         self._update_framebuffer(selection)
+
+    def _activate(self):
+        self._update_framebuffer(0)
+        self._is_active = True
 
     def _update_framebuffer(self, selection):
         if selection == 0:

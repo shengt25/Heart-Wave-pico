@@ -170,8 +170,8 @@ class HRV:
         
         # time initialization
         rtc = machine.RTC()
-        year,month,day, hour, minute, second, _ , _ = rtc.datetime()
-        date = str(day) + "." + str(month) + "." + str(year)
+        year,month,day, second, hour, minute, _ , _ = rtc.datetime()
+        date = "{:02d}.{:02d}.{} {:02d}:{:02d}:{:02d}".format(day, month, year, hour, minute, second)
         results = {
             "DATE":date,
             "HR":hr,

@@ -35,6 +35,8 @@ class StateMachine:
 if __name__ == "__main__":
     # settings:
     GlobalSettings.print_log = False
+    GlobalSettings.nr_files = 3
+    GlobalSettings.save_directory = "Saved_Values"
 
     state_machine = StateMachine()
     state_machine.set(state_machine.main_menu.enter)  # set the initial state

@@ -6,6 +6,8 @@ import machine
 
 class GlobalSettings:
     print_log = False
+    nr_files = 3
+    save_directory = "Saved_Values"
 
 
 def print_log(message):

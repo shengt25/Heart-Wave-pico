@@ -2,6 +2,10 @@ from hardware import EncoderEvent
 from utils import print_log, pico_rom_stat
 import time
 from data_processing import HRVCalculator
+from save_system import save_system
+import machine
+import utime
+
 """
 1. _state_xxx_init
    1.1 initialize variables, create ui elements, set up interrupt/timer, etc
@@ -158,15 +162,25 @@ class HRV:
         hr, ppi, rmssd,sdnn = HRV_Calculator._calculate_results()
         
         
-        
         # create new list elements
         self._list_result = self._view.add_list(items=["HR: " + str(hr) + " BPM",
                                                        "PPI: " + str(ppi) + " ms",
                                                        "RMSSD: " + str(rmssd) + " ms",
                                                        "SDNN: " + str(sdnn) + " ms"], y=14, read_only=True)
-        # todo
-        # save result
-
+        
+        # time initialization
+        rtc = machine.RTC()
+        year,month,day, second, hour, minute, _ , _ = rtc.datetime()
+        date = "{:02d}.{:02d}.{} {:02d}:{:02d}:{:02d}".format(day, month, year, hour, minute, second)
+        results = {
+            "DATE":date,
+            "HR":hr,
+            "PPI":ppi,
+            "RMSSD":rmssd,
+            "SDNN":sdnn}
+        
+        save_system(results)
+        
         print(f"Free storage: {pico_rom_stat()} KB")
 
         # goto next state (a loop)

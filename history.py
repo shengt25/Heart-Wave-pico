@@ -1,6 +1,8 @@
 from utils import print_log
 from hardware import EncoderEvent
-
+import os
+from utils import GlobalSettings
+import json
 """
 1. _state_xxx_init
    1.1 initialize variables, create ui elements, set up interrupt/timer, etc
@@ -35,17 +37,18 @@ class History:
         self._state_machine.set(self._state_show_list_init)
 
     def _load_history_list(self):
-        # dummy data
         # The first item is always "back", append dates after it
-        self._history_dates = ["back", "18.04.24 21:20", "18.04.24 21:20", "18.04.24 21:20", "18.04.24 21:20",
-                               "18.04.24 21:20", "18.04.24 21:20", "18.04.24 21:20", "18.04.24 21:20", "18.04.24 21:20",
-                               "18.04.24 21:20", "18.04.24 21:20", "18.04.24 21:20"]
+        self._history_dates = ["back"]
+        files = os.listdir(GlobalSettings.save_directory + "/")
+        self._history_dates.extend(files)
+        
 
     def _load_data(self):
-        # dummy data
         # data is defined: date, time, HR, PPI, RMSSD, SDNN, SNS, PNS
-        self._history_data = ["Date: 21.04.24", "21:20:50", "", "HR: 65", "PPI: 556", "RMSSD: 0.123",
-                              "SDNN: 0.456", "SNS: 1.235", "PNS: 1.336"]
+        path = GlobalSettings.save_directory + "/"+ self._history_dates[self._selection]
+        with open(path,'r') as file:
+            json_data = json.load(file)
+        self._history_data = [str(json_data["DATE"]),"0",str(json_data["HR"]),str(json_data["PPI"]),str(json_data["RMSSD"]),str(json_data["SDNN"]),"0","0"]
 
     def _state_show_list_init(self):
         # load data

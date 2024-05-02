@@ -14,7 +14,7 @@ class View:
         self._inactive_views = {}  # a separate dict with type as key for quicker search
 
     def add_text(self, text, y, invert=False, vid=None):
-        return self._add_view(TextView, vid, text, y, invert, )
+        return self._add_view(TextView, vid, text, y, invert)
 
     def add_list(self, items, y, spacing=2, read_only=False, vid=None):
         return self._add_view(ListView, vid, items, y, spacing, read_only)
@@ -33,12 +33,12 @@ class View:
             raise ValueError("View not found")
         # remove from active views and add to inactive views
         type_str = self._active_views[vid].type
+        self._active_views[vid]._clear()
+        self._active_views[vid]._active = False
         if self._inactive_views[type_str] is None:
             self._inactive_views[type_str] = [self._active_views.pop(vid)]
         else:
             self._inactive_views[type_str].append(self._active_views.pop(vid))
-        self._active_views[vid]._clear()
-        self._active_views[vid]._active = False
 
     def remove(self, view):
         vid = ""
@@ -60,8 +60,8 @@ class View:
         return self._active_views[vid]
 
     def _add_view(self, constructor, vid: str, *args, **kwargs):
-        if (constructor.type not in self._inactive_views.keys()
-                or self._inactive_views[constructor.type] is None
+        self._vid_checker(vid)
+        if (constructor.type not in self._inactive_views.keys() or self._inactive_views[constructor.type] is None
                 or len(self._inactive_views[constructor.type]) == 0):
             self._inactive_views[constructor.type] = []
             view = constructor(self._display, *args, **kwargs)
@@ -70,13 +70,12 @@ class View:
             return view
         else:
             inactive_views = self._inactive_views[constructor.type]  # get inactive views from the list of the type
-            if len(inactive_views) > 0:  # if it has inactive views
-                view = inactive_views.pop()  # get one
-                self._active_views[self._vid_checker(vid)] = view
-                view._reinit(*args, **kwargs)
-                print_log(
-                    f"View reused: {constructor.type}, active: {self._active_views}, inactive: {self._inactive_views}")
-                return view
+            view = inactive_views.pop()  # get one
+            self._active_views[self._vid_checker(vid)] = view
+            view._reinit(*args, **kwargs)
+            print_log(
+                f"View reused: {constructor.type}, active: {self._active_views}, inactive: {self._inactive_views}")
+            return view
 
     def _vid_checker(self, vid):
         if vid is None:
@@ -90,7 +89,7 @@ class View:
 
 
 class TextView:
-    """Text elements: set_text, remove"""
+    """Text elements: set_text"""
     type = "text"
 
     def __init__(self, display, text, y, invert=False):
@@ -112,7 +111,6 @@ class TextView:
 
     def _reinit(self, text, y, invert=False):
         self._active = True
-        self._clear()
         self._text = text
         self._y = y
         self._invert = invert
@@ -441,7 +439,7 @@ class MenuView:
         else:
             raise ValueError("Invalid index")
 
-        self._display.clear()
+        self._display.fill(0)
         self._display.text(text, int((128 - len(text) * 8) / 2), 38, 1)
         self._display.blit(icon_buf, int((128 - 32) / 2), 0)
         # draw selection indicator

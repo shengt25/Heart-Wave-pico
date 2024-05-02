@@ -1,3 +1,18 @@
+"""
+State is a base class for all states.
+
+Every state class must have the following methods:
+- enter: called when the state is entered
+- loop: called repeatedly until the state is changed
+
+Setting next state:
+- If next state is within the same file, use self._state_machine.set(StateName),
+  where StateName is the class name of the next state
+- If next state is in another file and is XXXEntry state, use self._state_machine.set(State.StateName),
+  where StateName is the class name of the next state. StateName here is a int, enum-like
+"""
+
+
 class State:
     Main_Menu = 0
     HR_Entry = 1

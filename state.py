@@ -9,7 +9,8 @@ Setting next state:
 - If next state is within the same file, use self._state_machine.set(StateName),
   where StateName is the class name of the next state
 - If next state is in another file and is XXXEntry state, use self._state_machine.set(State.StateName),
-  where StateName is the class name of the next state. StateName here is a int, enum-like
+  where StateName is the class name of the next state. StateName here is an int, enum-like
+  The reason for this is to avoid circular import
 """
 
 

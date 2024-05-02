@@ -40,8 +40,9 @@ class StateMachine:
 
     def run(self):
         if self._switched:
-            self._state.enter()
             self._switched = False
+            self._state.enter()
+            return  # skip loop() in the first run, because state can be changed again during enter()
         self._state.loop()
         self.view.refresh()
 

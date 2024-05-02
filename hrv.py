@@ -4,7 +4,6 @@ import time
 from data_processing import HRVCalculator
 from save_system import save_system
 import machine
-import utime
 from state import State
 from hr import HREntry
 
@@ -17,19 +16,8 @@ class HRVEntry(HREntry):
         self._heading_text = "HRV Analysis"
         self._hr_text = "-- BPM  30s"
 
-    def loop(self):
-        value = self._heart_sensor.read()
-        if value < self._start_threshold:
-            self._view.remove_by_id("info1")
-            self._view.remove_by_id("info2")
-            self._state_machine.set(HRVMeasure)
-
-        # keep watching rotary encoder press event
-        event = self._rotary_encoder.get_event()
-        if event == EncoderEvent.PRESS:
-            self._view.remove_by_id("info1")
-            self._view.remove_by_id("info2")
-            self._state_machine.set(State.Main_Menu)
+    def exit(self):
+        self._state_machine.set(HRVMeasure)
 
 
 class HRVMeasure(State):
@@ -111,6 +99,7 @@ class HRVMeasure(State):
                 self._view.remove(self._text_hr)
                 self._heart_sensor.stop()
                 self.exit()  # entry point to next state
+                return
 
         # keep watching rotary encoder press event, if pressed during measuring, exit to main menu
         event = self._rotary_encoder.get_event()

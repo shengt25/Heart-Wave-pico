@@ -25,13 +25,17 @@ class HREntry(State):
         if value < self._start_threshold:
             self._view.remove_by_id("info1")
             self._view.remove_by_id("info2")
-            self._state_machine.set(HRMeasure)
+            self.exit()
+            return
         # keep watching rotary encoder press event
         event = self._rotary_encoder.get_event()
         if event == EncoderEvent.PRESS:
             self._view.remove_by_id("info1")
             self._view.remove_by_id("info2")
             self._state_machine.set(State.Main_Menu)
+
+    def exit(self):
+        self._state_machine.set(HRMeasure)
 
 
 class HRMeasure(State):

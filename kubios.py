@@ -14,19 +14,8 @@ class KubiosEntry(HREntry):
         self._heading_text = "Kubios Analysis"
         self._hr_text = "-- BPM  30s"
 
-    def loop(self):
-        value = self._heart_sensor.read()
-        if value < self._start_threshold:
-            self._view.remove_by_id("info1")
-            self._view.remove_by_id("info2")
-            self._state_machine.set(KubiosMeasure)
-
-        # keep watching rotary encoder press event
-        event = self._rotary_encoder.get_event()
-        if event == EncoderEvent.PRESS:
-            self._view.remove_by_id("info1")
-            self._view.remove_by_id("info2")
-            self._state_machine.set(State.Main_Menu)
+    def exit(self):
+        self._state_machine.set(KubiosMeasure)
 
 
 class KubiosMeasure(HRVMeasure):

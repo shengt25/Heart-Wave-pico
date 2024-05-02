@@ -112,7 +112,39 @@ class HRVMeasure(State):
     def exit(self):
         """This state creates an entry point to next state,
         making kubios module able to easily inherit HRV class and override this method."""
-        self._state_machine.set(HRVResult, self._ibi_list)
+        self._state_machine.set(HRVResultCheck, self._ibi_list)
+
+
+class HRVResultCheck(State):
+    def __init__(self, state_machine, ibi_list):
+        super().__init__(state_machine)
+        self._ibi_list = ibi_list
+        self._listview_retry = None
+        self._selection = 0
+
+    def enter(self):
+        self._selection = 0
+        if len(self._ibi_list) < 10:
+            self._view.add_text(text="Not enough data", y=14, vid="info1")
+            self._listview_retry = self._view.add_list(items=["Try again", "Exit"], y=34)
+            self._rotary_encoder.set_rotate_irq(items_count=2, position=0, loop_mode=False)
+        else:
+            self._state_machine.set(HRVResult, self._ibi_list)
+
+    def loop(self):
+        event = self._rotary_encoder.get_event()
+        if event == EncoderEvent.ROTATE:
+            self._selection = self._rotary_encoder.get_position()
+            self._listview_retry.set_selection(self._selection)
+        elif event == EncoderEvent.PRESS:
+            if self._selection == 0:
+                self._rotary_encoder.unset_rotate_irq()
+                self._view.remove_all()
+                self._state_machine.set(HRVEntry)
+            else:
+                self._rotary_encoder.unset_rotate_irq()
+                self._view.remove_all()
+                self._state_machine.set(State.Main_Menu)
 
 
 class HRVResult(State):
@@ -121,7 +153,6 @@ class HRVResult(State):
         self._ibi_list = ibi_list
 
     def enter(self):
-        # todo
         # calculating result
         HRV_Calculator = HRVCalculator(self._ibi_list)
         hr, ppi, rmssd, sdnn = HRV_Calculator._calculate_results()

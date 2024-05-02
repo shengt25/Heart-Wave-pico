@@ -39,6 +39,7 @@ class View:
             self._inactive_views[type_str] = [self._active_views.pop(vid)]
         else:
             self._inactive_views[type_str].append(self._active_views.pop(vid))
+        print_log(f"View removed: {type_str}, active: {self._active_views}, inactive: {self._inactive_views}")
 
     def remove(self, view):
         vid = ""
@@ -61,9 +62,10 @@ class View:
 
     def _add_view(self, constructor, vid: str, *args, **kwargs):
         self._vid_checker(vid)
-        if (constructor.type not in self._inactive_views.keys() or self._inactive_views[constructor.type] is None
-                or len(self._inactive_views[constructor.type]) == 0):
+        if constructor.type not in self._inactive_views.keys():
             self._inactive_views[constructor.type] = []
+
+        if len(self._inactive_views[constructor.type]) == 0:
             view = constructor(self._display, *args, **kwargs)
             self._active_views[self._vid_checker(vid)] = view
             print_log(f"View added: {constructor.type}, active: {self._active_views}, inactive: {self._inactive_views}")
@@ -305,7 +307,7 @@ class GraphView:
             raise ValueError("Trying to set an inactive view component")
         self._update_framebuffer(value)
 
-    def _reinit(self, x=0, y=12, w=128, h=40, speed=1, show_box=False):
+    def _reinit(self, y, h, x=0, w=128, speed=1, show_box=False):
         self._active = True
         self._box_x = x
         self._box_y = y

@@ -64,8 +64,8 @@ class HRMeasure(State):
         self._hr_display_list = []
         self._ibi_fifo = self._ibi_calculator.get_ibi_fifo()
         # placeholders for ui
-        self._text_hr = None
-        self._graph = None
+        self._textview_hr = None
+        self._graphview = None
         # settings
         self._hr_update_interval = 5  # number of sample
 
@@ -77,8 +77,8 @@ class HRMeasure(State):
         self._ibi_calculator.reinit()  # remember to reinit the calculator before use every time
         # ui
         # assigned to self.xxx, no need to select_by_id in loop()
-        self._text_hr = self._view.select_by_id("hr")
-        self._graph = self._view.add_graph(y=14, h=64 - 14 - 12, vid="graph")
+        self._textview_hr = self._view.select_by_id("hr")
+        self._graphview = self._view.add_graph(y=14, h=64 - 14 - 12, vid="graph")
         self._heart_sensor.start()  # start lastly to reduce the chance of data piling, maybe not needed
 
     def loop(self):
@@ -92,7 +92,7 @@ class HRMeasure(State):
         if len(self._hr_display_list) >= self._hr_update_interval:
             median_hr = sorted(self._hr_display_list)[len(self._hr_display_list) // 2]
             # use set_text method to update the text, view (screen) will auto refresh
-            self._text_hr.set_text(str(median_hr) + " BPM")
+            self._textview_hr.set_text(str(median_hr) + " BPM")
             self._hr_display_list.clear()
 
         # update graph, reads value from sensor directly. no need to use sensor_fifo
@@ -100,7 +100,7 @@ class HRMeasure(State):
         if time.ticks_diff(time.ticks_ms(), self._last_graph_update_time) > 40:
             self._last_graph_update_time = time.ticks_ms()
             value = self._heart_sensor.read()
-            self._graph.set_value(value)
+            self._graphview.set_value(value)
 
         # keep watching rotary encoder press event
         event = self._rotary_encoder.get_event()

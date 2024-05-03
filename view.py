@@ -25,6 +25,9 @@ class View:
     def add_menu(self, vid=None):
         return self._add_view(MenuView, vid)
 
+    def set_update(self, force=False):
+        self._display.set_update(force)
+
     def refresh(self):
         self._display.refresh()
 
@@ -135,8 +138,8 @@ class TextView:
 
 
 class ListView:
-    """List elements: set_items, set_selection, set_top_index.
-    get_top_index_max, get_top_index, get_max_selection.
+    """List elements: set_items, set_selection, set_page.
+    get_page_max, get_page, get_selection_max.
     Note: current selection is got from rotary encoder get_position() method, which is absolute position
     ListView don't have a current_selection attribute or method, it's managed by the caller(rotary encoder user)."""
     type = "list"
@@ -148,7 +151,7 @@ class ListView:
         self._font_height = display.FONT_HEIGHT
         self.active = True
 
-        self._top_index = 0
+        self._page = 0
         self._display_count = 0  # number of items WILL BE shown at once, not max possible number of items
         self._slider_height = 0
         self._show_scrollbar = False
@@ -165,10 +168,10 @@ class ListView:
         self._slider_bottom = self._scrollbar_bottom - 1
         self.set_items(items)
 
-    def get_top_index(self):
-        return self._top_index
+    def get_page(self):
+        return self._page
 
-    def get_top_index_max(self):
+    def get_page_max(self):
         return len(self._items) - self._display_count
 
     def get_selection_max(self):
@@ -181,19 +184,19 @@ class ListView:
             raise ValueError("Invalid selection index")
         self.clear()
         # update page start index
-        if index < self._top_index:
-            self._top_index = index
-        elif index > self._top_index + self._display_count - 1:
-            self._top_index = index - (self._display_count - 1)
+        if index < self._page:
+            self._page = index
+        elif index > self._page + self._display_count - 1:
+            self._page = index - (self._display_count - 1)
         self._update_framebuffer(index)
 
-    def set_top_index(self, index):
+    def set_page(self, index):
         if not self.active:
             raise ValueError("Trying to set an inactive view component")
-        if index < 0 or index > self.get_top_index_max():
+        if index < 0 or index > self.get_page_max():
             raise ValueError("Invalid page index")
-        self._top_index = index
-        self.set_selection(self._top_index)
+        self._page = index
+        self.set_selection(self._page)
 
     def set_items(self, items):
         if not self.active:
@@ -217,7 +220,7 @@ class ListView:
                     self._slider_bottom - self._slider_top - self._slider_min_height) + self._slider_min_height)
         # display count at once
         self._display_count = min(max_display_count, len(self._items))
-        self._top_index = 0  # set view index to first item
+        self._page = 0  # set view index to first item
         self.set_selection(0)
 
     def reinit(self, items, y, spacing=2, read_only=False):
@@ -240,7 +243,7 @@ class ListView:
         slider_width = scrollbar_width - 2
         assert self._display_count < len(self._items), "No need to draw scroll bar"
 
-        slider_y = round(self._top_index / (len(self._items) - self._display_count) * (
+        slider_y = round(self._page / (len(self._items) - self._display_count) * (
                 self._slider_bottom - self._slider_top - self._slider_height) + self._slider_top)
         # scrollbar outline
         self._display.rect(self._display.width - scrollbar_width - 1, self._scrollbar_top, scrollbar_width,
@@ -249,20 +252,20 @@ class ListView:
         self._display.fill_rect(self._display.width - slider_width - 2, slider_y, slider_width,
                                 self._slider_height, 1)
         # draw arrow on top, 7 is the width of the arrow
-        if self._top_index == 0:
+        if self._page == 0:
             self._display.poly(self._display.width - 7, self._y, self._arrow_top, 1, 0)
         else:
             self._display.poly(self._display.width - 7, self._y, self._arrow_top, 1, 1)
         # draw arrow on bottom, 6 is the height of the arrow
-        if self._top_index == len(self._items) - self._display_count:
+        if self._page == len(self._items) - self._display_count:
             self._display.poly(self._display.width - 7, self._display.height - 6, self._arrow_bottom, 1, 0)
         else:
             self._display.poly(self._display.width - 7, self._display.height - 6, self._arrow_bottom, 1, 1)
 
     def _update_framebuffer(self, selection):
-        for i in range(self._top_index, self._top_index + self._display_count):
+        for i in range(self._page, self._page + self._display_count):
             print_log(f"List view showing: {i} / {len(self._items) - 1}")
-            text_y = self._y + (i - self._top_index) * (self._font_height + self._spacing)
+            text_y = self._y + (i - self._page) * (self._font_height + self._spacing)
             if self._read_only:
                 self._display.text(self._items[i], 0, text_y)
             else:

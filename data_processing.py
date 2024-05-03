@@ -198,7 +198,7 @@ class IBICalculator:
                 return
 
 
-def calculate_results(self, IBI_list):
+def calculate_hrv(IBI_list):
     # HR
     average_HR = 0
     for HR in IBI_list:

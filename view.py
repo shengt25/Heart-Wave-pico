@@ -33,8 +33,8 @@ class View:
             raise ValueError("View not found")
         # remove from active views and add to inactive views
         type_str = self._active_views[vid].type
-        self._active_views[vid]._clear()
-        self._active_views[vid]._active = False
+        self._active_views[vid].clear()
+        self._active_views[vid].active = False
         if self._inactive_views[type_str] is None:
             self._inactive_views[type_str] = [self._active_views.pop(vid)]
         else:
@@ -74,7 +74,7 @@ class View:
             inactive_views = self._inactive_views[constructor.type]  # get inactive views from the list of the type
             view = inactive_views.pop()  # get one
             self._active_views[self._vid_checker(vid)] = view
-            view._reinit(*args, **kwargs)
+            view.reinit(*args, **kwargs)
             print_log(
                 f"View reused: {constructor.type}, active: {self._active_views}, inactive: {self._inactive_views}")
             return view
@@ -97,7 +97,7 @@ class TextView:
     def __init__(self, display, text, y, invert=False):
         self._display = display
         self._font_height = display.FONT_HEIGHT
-        self._active = True
+        self.active = True
         # param
         self._text = text
         self._y = y
@@ -105,20 +105,20 @@ class TextView:
         self._update_framebuffer()
 
     def set_text(self, text):
-        if not self._active:
+        if not self.active:
             raise ValueError("Trying to set an inactive view component")
-        self._clear()
+        self.clear()
         self._text = text
         self._update_framebuffer()
 
-    def _reinit(self, text, y, invert=False):
-        self._active = True
+    def reinit(self, text, y, invert=False):
+        self.active = True
         self._text = text
         self._y = y
         self._invert = invert
         self._update_framebuffer()
 
-    def _clear(self):
+    def clear(self):
         if self._invert:
             self._display.fill_rect(0, self._y, self._display.width, self._font_height + 2, 0)
         else:
@@ -135,8 +135,8 @@ class TextView:
 
 
 class ListView:
-    """List elements: set_items, set_selection, set_page.
-    get_page, get_max_page, get_max_selection.
+    """List elements: set_items, set_selection, set_top_index.
+    get_top_index_max, get_top_index, get_max_selection.
     Note: current selection is got from rotary encoder get_position() method, which is absolute position
     ListView don't have a current_selection attribute or method, it's managed by the caller(rotary encoder user)."""
     type = "list"
@@ -146,7 +146,7 @@ class ListView:
     def __init__(self, display, items, y, spacing=2, read_only=False):
         self._display = display
         self._font_height = display.FONT_HEIGHT
-        self._active = True
+        self.active = True
 
         self._top_index = 0
         self._display_count = 0  # number of items WILL BE shown at once, not max possible number of items
@@ -171,15 +171,15 @@ class ListView:
     def get_top_index_max(self):
         return len(self._items) - self._display_count
 
-    def get_max_selection(self):
+    def get_selection_max(self):
         return len(self._items) - 1
 
     def set_selection(self, index):
-        if not self._active:
+        if not self.active:
             raise ValueError("Trying to set an inactive view component")
-        if index < 0 or index > self.get_max_selection():
+        if index < 0 or index > self.get_selection_max():
             raise ValueError("Invalid selection index")
-        self._clear()
+        self.clear()
         # update page start index
         if index < self._top_index:
             self._top_index = index
@@ -188,7 +188,7 @@ class ListView:
         self._update_framebuffer(index)
 
     def set_top_index(self, index):
-        if not self._active:
+        if not self.active:
             raise ValueError("Trying to set an inactive view component")
         if index < 0 or index > self.get_top_index_max():
             raise ValueError("Invalid page index")
@@ -196,9 +196,9 @@ class ListView:
         self.set_selection(self._top_index)
 
     def set_items(self, items):
-        if not self._active:
+        if not self.active:
             raise ValueError("Trying to set an inactive view component")
-        self._clear()
+        self.clear()
         self._items = items
         # get max display count at once
         available_height = self._display.height - self._y
@@ -220,8 +220,8 @@ class ListView:
         self._top_index = 0  # set view index to first item
         self.set_selection(0)
 
-    def _reinit(self, items, y, spacing=2, read_only=False):
-        self._active = True
+    def reinit(self, items, y, spacing=2, read_only=False):
+        self.active = True
         self._items = items
         self._read_only = read_only
         self._y = y
@@ -231,7 +231,7 @@ class ListView:
         self._slider_top = self._scrollbar_top + 1  # offset 1 pixel from scrollbar outline
         self.set_items(items)
 
-    def _clear(self):
+    def clear(self):
         self._display.fill_rect(0, self._y, self._display.width, self._display.height - self._y, 0)
         self._display.set_update()
 
@@ -275,6 +275,26 @@ class ListView:
         self._display.set_update()
 
 
+# todo a simplified graph view, because in this project there is no need for a complex one including outline box or x-coordinate, width change, etc.
+# class GraphViewNew:
+#     def __init__(self, display, y, h, speed=1):
+#         self._display = display
+#         self.WIDTH = display.width
+#         self.HEIGHT = display.height
+#         self._mean = 8192
+#         self.active = True
+#
+#         self._box_y = y
+#         self._box_h = h
+#         self._show_box = show_box
+#         self._speed = speed
+#
+#         self._x = 0
+#         self._y = 0
+#         self._last_x = -1
+#         self._last_y = -1
+
+
 class GraphView:
     type = "graph"
 
@@ -284,7 +304,7 @@ class GraphView:
         self._range_h_default = 16384
         self._range_l_default = 0
         self._range_update_period = 20
-        self._active = True
+        self.active = True
 
         # attributes
         self._box_x = x
@@ -303,12 +323,12 @@ class GraphView:
         self._last_y = -1
 
     def set_value(self, value):
-        if not self._active:
+        if not self.active:
             raise ValueError("Trying to set an inactive view component")
         self._update_framebuffer(value)
 
-    def _reinit(self, y, h, x=0, w=128, speed=1, show_box=False):
-        self._active = True
+    def reinit(self, y, h, x=0, w=128, speed=1, show_box=False):
+        self.active = True
         self._box_x = x
         self._box_y = y
         self._box_w = w
@@ -324,7 +344,7 @@ class GraphView:
         self._last_x = -1
         self._last_y = -1
 
-    def _clear(self):
+    def clear(self):
         self._display.fill_rect(self._box_x, self._box_y, self._box_w, self._box_h, 0)
         self._display.set_update()
 
@@ -411,17 +431,17 @@ class MenuView:
 
     def __init__(self, display):
         self._display = display
-        self._active = True
+        self.active = True
 
     def set_selection(self, selection):
-        if not self._active:
+        if not self.active:
             raise ValueError("Trying to set an inactive view component")
         self._update_framebuffer(selection)
 
-    def _reinit(self):
-        self._active = True
+    def reinit(self):
+        self.active = True
 
-    def _clear(self):
+    def clear(self):
         self._display.fill(0)
         self._display.set_update()
 

@@ -3,7 +3,8 @@ import time
 from state import State
 
 
-class HR(State):
+class HREntry(State):
+    """Entry point for any measurement: HR, HRV, Kubios"""
     def __init__(self, state_machine):
         # take common resources:
         # state_machine, rotary_encoder, heart_sensor, ibi_calculator, view

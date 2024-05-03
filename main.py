@@ -10,6 +10,6 @@ if __name__ == "__main__":
     GlobalSettings.save_directory = "Saved_Values"
 
     state_machine = StateMachine()
-    state_machine.set(State.Main_Menu)  # set the initial state
+    state_machine.set(state_code=state_machine.STATE_MENU)
     while True:
         state_machine.run()

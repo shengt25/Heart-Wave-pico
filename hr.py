@@ -1,74 +1,87 @@
-from hardware import EncoderEvent
 from utils import print_log
 import time
 from state import State
 
 
-class HREntry(State):
-    # start the measurement after triggering threshold is reached
+class HR(State):
     def __init__(self, state_machine):
+        # take common resources:
+        # state_machine, rotary_encoder, heart_sensor, ibi_calculator, view
         super().__init__(state_machine)
-        self._start_threshold = 200  # threshold that triggers measurement automatically when finger is placed
-        self._heading_text = "HR Measure"
-        self._hr_text = "-- BPM"
+        # track current module
+        self._current_module = None
+        # settings
+        self._start_threshold = 200  # threshold that triggers the start of measurement when finger is placed
 
-    def enter(self):
-        print_log(self._heading_text)
+    def enter(self, args):
+        # take arguments: current_state_code, heading_text, hr_text
+        self._current_module, heading_text, hr_text = args[0], args[1], args[2]
         self._view.add_text(text="Put finger on ", y=14, vid="info1")
         self._view.add_text(text="sensor to start", y=24, vid="info2")
-        self._view.add_text(text=self._heading_text, y=0, invert=True, vid="heading")  # 'invert' gives it a background
-        self._view.add_text(text=self._hr_text, y=64 - 8, vid="hr")
-        self._display.set_update()
+        self._view.add_text(text=heading_text, y=0, invert=True, vid="heading")  # 'invert' gives it a background
+        self._view.add_text(text=hr_text, y=64 - 8, vid="hr")
 
     def loop(self):
+        # check finger on sensor
         value = self._heart_sensor.read()
         if value < self._start_threshold:
+            # keep heading and hr text, remove the rest
             self._view.remove_by_id("info1")
             self._view.remove_by_id("info2")
-            self.exit()
+            # HR -> HR Measure, HRV
+            if self._current_module == self._state_machine.MODULE_HR:
+                self._state_machine.set(state_code=self._state_machine.STATE_HR_MEASURE,
+                                        args=[self._current_module])
+            # HRV -> HRV Measure
+            elif self._current_module == self._state_machine.MODULE_HRV:
+                self._state_machine.set(state_code=self._state_machine.STATE_HRV_MEASURE,
+                                        args=[self._current_module])
+            # Kubios -> HRV Measure (same state, but module code will distinguish)
+            elif self._current_module == self._state_machine.MODULE_KUBIOS:
+                self._state_machine.set(state_code=self._state_machine.STATE_HRV_MEASURE,
+                                        args=[self._current_module])
             return
-        # keep watching rotary encoder press event
+        # handle rotary encoder event: press
         event = self._rotary_encoder.get_event()
-        if event == EncoderEvent.PRESS:
+        if event == self._rotary_encoder.EVENT_PRESS:
+            # keep heading and hr text, remove the rest
             self._view.remove_by_id("info1")
             self._view.remove_by_id("info2")
-            self._state_machine.set(State.Main_Menu)
-
-    def exit(self):
-        self._state_machine.set(HRMeasure)
+            self._state_machine.set(state_code=self._state_machine.STATE_MENU)
+            return
 
 
 class HRMeasure(State):
     def __init__(self, state_machine):
+        # take common resources:
+        # state_machine, rotary_encoder, heart_sensor, ibi_calculator, view
         super().__init__(state_machine)
+        # track current module
+        self._current_module = None
         # data
         self._last_graph_update_time = time.ticks_ms()
         self._hr_display_list = []
         self._ibi_fifo = self._ibi_calculator.get_ibi_fifo()
-        # ui placeholder
+        # placeholders for ui
         self._text_hr = None
         self._graph = None
         # settings
-        self._hr_update_interval = 5  # number of sample needed to update the HR display
+        self._hr_update_interval = 5  # number of sample
 
-    def enter(self):
-        # the entry point of the HR menu
-        print_log("HR: enter")
-        # clear data
-        self._ibi_calculator.reinit()
-        self._hr_display_list.clear()
+    def enter(self, args):
+        self._current_module = args[0]
+        # re-init data
         self._last_graph_update_time = time.ticks_ms()
+        self._hr_display_list.clear()
+        self._ibi_calculator.reinit()  # remember to reinit the calculator before use every time
         # ui
+        # assigned to self.xxx, no need to select_by_id in loop()
         self._text_hr = self._view.select_by_id("hr")
         self._graph = self._view.add_graph(y=14, h=64 - 14 - 12, vid="graph")
-        # set up timer interrupt at last (to reduce the chance of data building up), and set next state to measure
-        self._heart_sensor.start()
+        self._heart_sensor.start()  # start lastly to reduce the chance of data piling, maybe not needed
 
     def loop(self):
-        # this function was assigned to the state machine, and called repeatedly in a loop
-        # until the rotary encoder event tells to enter another state
-
-        self._ibi_calculator.run()  # keep calling calculator
+        self._ibi_calculator.run()  # keep calling calculator: sensor_fifo -> ibi_fifo
         # monitor and get data from ibi fifo, calculate hr and put into list
         if self._ibi_fifo.has_data():
             ibi = self._ibi_fifo.get()
@@ -81,8 +94,8 @@ class HRMeasure(State):
             self._text_hr.set_text(str(median_hr) + " BPM")
             self._hr_display_list.clear()
 
-        # update graph, it reads current value from sensor directly. no need to use sensor_fifo
-        # only update screen every 40ms, to save the CPU time
+        # update graph, reads value from sensor directly. no need to use sensor_fifo
+        # maximum update interval 40ms, to save the CPU time
         if time.ticks_diff(time.ticks_ms(), self._last_graph_update_time) > 40:
             self._last_graph_update_time = time.ticks_ms()
             value = self._heart_sensor.read()
@@ -90,7 +103,8 @@ class HRMeasure(State):
 
         # keep watching rotary encoder press event
         event = self._rotary_encoder.get_event()
-        if event == EncoderEvent.PRESS:
-            self._view.remove_all()
+        if event == self._state_machine.EVENT_PRESS:
             self._heart_sensor.stop()
-            self._state_machine.set(State.Main_Menu)
+            self._view.remove_all()
+            self._state_machine.set(state_code=self._state_machine.STATE_MENU)
+            return

@@ -1,5 +1,5 @@
 from hardware import Display, RotaryEncoder, HeartSensor
-from data_processing import IBICalculator
+from data_processing import IBICalculator, HRVCalculator
 from view import View
 from main_menu import MainMenu
 from hr import HREntry
@@ -15,16 +15,17 @@ class StateMachine:
         self.rotary_encoder = RotaryEncoder(btn_debounce_ms=50)
         self.heart_sensor = HeartSensor(pin=26, sampling_rate=250)
         self.ibi_calculator = IBICalculator(self.heart_sensor.get_sensor_fifo(), self.heart_sensor.get_sampling_rate())
+        self.hrv_calculator = HRVCalculator()
         self.view = View(self.display)
-        self.args = None
-        self.kwargs = None
+        self._args = None
+        self._kwargs = None
         self._states = {}
         self._state = None
         self._switched = False
 
-    def get_state(self, state_class, *args, **kwargs):
+    def get_state(self, state_class):
         if state_class not in self._states:
-            self._states[state_class] = state_class(self, *args, **kwargs)
+            self._states[state_class] = state_class(self)  # pass self to state class, to give property access
         return self._states[state_class]
 
     def preload_states(self, state_class_list):
@@ -32,17 +33,30 @@ class StateMachine:
             self.get_state(state_class)
 
     def set(self, state, *args, **kwargs):
-        # if args or kwargs are provided, store them for the next state.enter()
+        # Store additional arguments for the next state.enter()
+        self._args = args
+        self._kwargs = kwargs
         if isinstance(state, int):
             state = self._map_entry_state(state)
-        self._state = self.get_state(state, *args, **kwargs)
+        self._state = self.get_state(state)
         self._switched = True
 
     def run(self):
         if self._switched:
             self._switched = False
-            self._state.enter()
-            return  # skip loop() in the first run, because state can be changed again during enter()
+            if not self._args and not self._kwargs:
+                self._state.enter()
+                return
+            if self._args and not self._kwargs:
+                self._state.enter(*self._args)
+                return
+            if self._kwargs and not self._args:
+                self._state.enter(**self._kwargs)
+                return
+            if self._args and self._kwargs:
+                self._state.enter(*self._args, **self._kwargs)
+                return
+            # skip loop() in the first run, because state can be changed again during enter()
         self._state.loop()
         self.view.refresh()
 

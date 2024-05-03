@@ -6,30 +6,24 @@ Every state class must have the following methods:
 - loop: called repeatedly until the state is changed
 
 Setting next state:
-- If next state is within the same file, use self._state_machine.set(StateName),
-  where StateName is the class name of the next state
-- If next state is in another file and is XXXEntry state, use self._state_machine.set(State.StateName),
-  where StateName is the class name of the next state. StateName here is an int, enum-like
-  The reason for this is to avoid circular import
+- To set the next state, call state_machine.set(state_code, args)
+- The state_code is defined in the StateMachine class, the data type is int
+- The args is a list of arguments to pass to the next state's enter method
 """
 
 
 class State:
-    Main_Menu = 0
-    HR_Entry = 1
-    HRV_Entry = 2
-    Kubios_Entry = 3
-    History_Entry = 4
-
+    """common resources:
+    state_machine, rotary_encoder, heart_sensor, ibi_calculator, view"""
     def __init__(self, state_machine):
         self._state_machine = state_machine
-        self._display = state_machine.display
+        # self._display = state_machine.display
         self._rotary_encoder = state_machine.rotary_encoder
         self._heart_sensor = state_machine.heart_sensor
         self._ibi_calculator = state_machine.ibi_calculator
         self._view = state_machine.view
 
-    def enter(self):
+    def enter(self, args):
         raise NotImplementedError("This method must be defined and overridden")
 
     def loop(self):

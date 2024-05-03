@@ -24,6 +24,7 @@ class HeartSensor:
 
     def stop(self):
         self._timer.deinit()
+        self._sensor_fifo.clear()
 
     def get_sampling_rate(self):
         return self._sampling_rate
@@ -45,6 +46,10 @@ class HeartSensor:
 
 
 class RotaryEncoder:
+    EVENT_NONE = 0
+    EVENT_ROTATE = 1
+    EVENT_PRESS = 2
+
     def __init__(self, clk_pin=10, dt_pin=11, btn_pin=12, btn_debounce_ms=50):
         self._clk = Pin(clk_pin, Pin.IN, Pin.PULL_UP)
         self._dt = Pin(dt_pin, Pin.IN, Pin.PULL_UP)
@@ -83,12 +88,12 @@ class RotaryEncoder:
                 value = self._event_fifo.get()
                 if value == 0:  # return press event, ignore the rest of the fifo (usually rotate event)
                     self._event_fifo.clear()
-                    return EncoderEvent.PRESS
-                else:  # return otate event
+                    return self.EVENT_PRESS
+                else:  # return rotate event
                     self._cal_position(value)
-            return EncoderEvent.ROTATE
+            return self.EVENT_ROTATE
         else:
-            return EncoderEvent.NONE
+            return self.EVENT_NONE
 
     """private methods"""
 

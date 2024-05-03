@@ -5,16 +5,15 @@ from state import State
 
 class HREntry(State):
     """Entry point for any measurement: HR, HRV, Kubios"""
+
     def __init__(self, state_machine):
         super().__init__(state_machine)
-        # track current module
-        self._current_module = None
         # settings
         self._start_threshold = 200  # threshold that triggers the start of measurement when finger is placed
 
     def enter(self, args):
-        # take arguments: current_state_code, heading_text, hr_text
-        self._current_module, heading_text, hr_text = args[0], args[1], args[2]
+        # take arguments: heading_text, hr_text
+        heading_text, hr_text = args[0], args[1]
         self._view.add_text(text="Put finger on ", y=14, vid="info1")
         self._view.add_text(text="sensor to start", y=24, vid="info2")
         self._view.add_text(text=heading_text, y=0, invert=True, vid="heading")  # 'invert' gives it a background
@@ -28,17 +27,14 @@ class HREntry(State):
             self._view.remove_by_id("info1")
             self._view.remove_by_id("info2")
             # HR -> HR Measure, HRV
-            if self._current_module == self._state_machine.MODULE_HR:
-                self._state_machine.set(state_code=self._state_machine.STATE_HR_MEASURE,
-                                        args=[self._current_module])
+            if self._state_machine.current_module == self._state_machine.MODULE_HR:
+                self._state_machine.set(state_code=self._state_machine.STATE_HR_MEASURE)
             # HRV -> HRV Measure
-            elif self._current_module == self._state_machine.MODULE_HRV:
-                self._state_machine.set(state_code=self._state_machine.STATE_HRV_MEASURE,
-                                        args=[self._current_module])
+            elif self._state_machine.current_module == self._state_machine.MODULE_HRV:
+                self._state_machine.set(state_code=self._state_machine.STATE_HRV_MEASURE)
             # Kubios -> HRV Measure (same state, but module code will distinguish)
-            elif self._current_module == self._state_machine.MODULE_KUBIOS:
-                self._state_machine.set(state_code=self._state_machine.STATE_HRV_MEASURE,
-                                        args=[self._current_module])
+            elif self._state_machine.current_module == self._state_machine.MODULE_KUBIOS:
+                self._state_machine.set(state_code=self._state_machine.STATE_HRV_MEASURE)
             return
         # handle rotary encoder event: press
         event = self._rotary_encoder.get_event()
@@ -53,8 +49,6 @@ class HREntry(State):
 class HRMeasure(State):
     def __init__(self, state_machine):
         super().__init__(state_machine)
-        # track current module
-        self._current_module = None
         # data
         self._last_graph_update_time = time.ticks_ms()
         self._hr_display_list = []
@@ -66,7 +60,6 @@ class HRMeasure(State):
         self._hr_update_interval = 5  # number of sample
 
     def enter(self, args):
-        self._current_module = args[0]
         # re-init data
         self._last_graph_update_time = time.ticks_ms()
         self._hr_display_list.clear()
@@ -100,7 +93,7 @@ class HRMeasure(State):
 
         # keep watching rotary encoder press event
         event = self._rotary_encoder.get_event()
-        if event == self._state_machine.EVENT_PRESS:
+        if event == self._rotary_encoder.EVENT_PRESS:
             self._heart_sensor.stop()
             self._view.remove_all()
             self._state_machine.set(state_code=self._state_machine.STATE_MENU)

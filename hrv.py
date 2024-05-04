@@ -13,8 +13,8 @@ class HRVMeasure(State):
         self._last_graph_update_time = None
         self._last_countdown_update_time = None
         self._hr = None
-        self._hr_display_list = None
-        self._ibi_list = None
+        self._hr_display_list = []
+        self._ibi_list = []
         self._time_left = None
         self._ibi_fifo = self._ibi_calculator.get_ibi_fifo()  # ref of ibi fifo
         # ui placeholder
@@ -28,8 +28,8 @@ class HRVMeasure(State):
         self._last_graph_update_time = time.ticks_ms()
         self._last_countdown_update_time = -1
         self._hr = 0
-        self._hr_display_list = []
-        self._ibi_list = []
+        self._hr_display_list.clear()
+        self._ibi_list.clear()
         self._time_left = 30
         self._ibi_calculator.reinit()
         # ui elements

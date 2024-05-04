@@ -11,13 +11,14 @@ class HistoryList(State):
         super().__init__(state_machine)
         self._selection = 0  # to preserve selected index, resume when exit and re-enter
         self._page = 0  # to preserve page index, resume when exit and re-enter
-        self._history_dates = None
+        self._history_dates = []
         # ui
         self._listview_history_list = None
 
     def enter(self, args):
         # load data
-        self._history_dates = ["back"]
+        self._history_dates.clear()
+        self._history_dates.append("Back")
         files = load_history_list()
         self._history_dates.extend(files)
         # ui

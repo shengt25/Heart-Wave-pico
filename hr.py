@@ -54,7 +54,7 @@ class HRMeasure(State):
         self._hr_display_list = None
         self._ibi_fifo = self._ibi_calculator.get_ibi_fifo()  # ref of ibi_fifo
         # placeholders for ui
-        self._textview_hr = None
+        self._textview_hr = []
         self._graphview = None
         # settings
         self._hr_update_interval = 5  # number of sample

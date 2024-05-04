@@ -10,13 +10,13 @@ class HRVMeasure(State):
     def __init__(self, state_machine):
         super().__init__(state_machine)
         # data
-        self._last_graph_update_time = time.ticks_ms()
-        self._last_countdown_update_time = -1
-        self._hr = 0
-        self._hr_display_list = []
-        self._ibi_list = []
-        self._time_left = 30
-        self._ibi_fifo = self._ibi_calculator.get_ibi_fifo()
+        self._last_graph_update_time = None
+        self._last_countdown_update_time = None
+        self._hr = None
+        self._hr_display_list = None
+        self._ibi_list = None
+        self._time_left = None
+        self._ibi_fifo = self._ibi_calculator.get_ibi_fifo()  # ref of ibi fifo
         # ui placeholder
         self._textview_hr = None
         self._graphview = None
@@ -87,7 +87,7 @@ class HRVMeasure(State):
         if event == self._rotary_encoder.EVENT_PRESS:
             self._heart_sensor.stop()
             self._view.remove_all()
-            self._state_machine.set(self._state_machine.STATE_MENU)
+            self._state_machine.set(state_code=self._state_machine.STATE_MENU)
             return
 
 
@@ -95,11 +95,9 @@ class HRVResultCheck(State):
     def __init__(self, state_machine):
         super().__init__(state_machine)
         self._listview_retry = None
-        self._selection = 0
 
     def enter(self, args):
         ibi_list = args[0]
-        self._selection = 0
         # data not enough, retry or exit
         if len(ibi_list) < 10:
             self._view.add_text(text="Not enough data", y=14, vid="info1")
@@ -116,15 +114,13 @@ class HRVResultCheck(State):
         """if check not enough, then goes here"""
         event = self._rotary_encoder.get_event()
         if event == self._rotary_encoder.EVENT_ROTATE:
-            self._selection = self._rotary_encoder.get_position()
-            self._listview_retry.set_selection(self._selection)
+            self._listview_retry.set_selection(self._rotary_encoder.get_position())
         elif event == self._rotary_encoder.EVENT_PRESS:
             self._rotary_encoder.unset_rotate_irq()
             self._view.remove_all()
-            if self._selection == 0:
+            if self._rotary_encoder.get_position() == 0:
                 self._state_machine.set(state_code=self._state_machine.STATE_HR_ENTRY)
-            elif self._selection == 1:
-
+            elif self._rotary_encoder.get_position() == 1:
                 self._state_machine.set(state_code=self._state_machine.STATE_MENU)
             else:
                 raise ValueError("Invalid selection index")
@@ -156,4 +152,4 @@ class HRVResultShow(State):
         if event == self._rotary_encoder.EVENT_PRESS:
             # remove all ui elements and exit to main menu
             self._view.remove_all()
-            self._state_machine.set(self._state_machine.STATE_MENU)
+            self._state_machine.set(state_code=self._state_machine.STATE_MENU)

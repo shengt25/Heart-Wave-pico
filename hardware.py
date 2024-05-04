@@ -12,13 +12,6 @@ class EncoderEvent:
     PRESS = 2
 
 
-class Hardware:
-    def __init__(self, display_refresh_rate=40, sensor_pin=26, sensor_sampling_rate=250):
-        self.display = init_display(refresh_rate=display_refresh_rate)
-        self.rotary_encoder = RotaryEncoder()
-        self.heart_sensor = HeartSensor(pin=sensor_pin, sampling_rate=sensor_sampling_rate)
-
-
 class HeartSensor:
     def __init__(self, pin=26, sampling_rate=250):
         self._adc = ADC(Pin(pin))
@@ -31,6 +24,7 @@ class HeartSensor:
 
     def stop(self):
         self._timer.deinit()
+        self._sensor_fifo.clear()
 
     def get_sampling_rate(self):
         return self._sampling_rate
@@ -52,6 +46,10 @@ class HeartSensor:
 
 
 class RotaryEncoder:
+    EVENT_NONE = 0
+    EVENT_ROTATE = 1
+    EVENT_PRESS = 2
+
     def __init__(self, clk_pin=10, dt_pin=11, btn_pin=12, btn_debounce_ms=50):
         self._clk = Pin(clk_pin, Pin.IN, Pin.PULL_UP)
         self._dt = Pin(dt_pin, Pin.IN, Pin.PULL_UP)
@@ -90,12 +88,12 @@ class RotaryEncoder:
                 value = self._event_fifo.get()
                 if value == 0:  # return press event, ignore the rest of the fifo (usually rotate event)
                     self._event_fifo.clear()
-                    return EncoderEvent.PRESS
-                else:  # return otate event
+                    return self.EVENT_PRESS
+                else:  # return rotate event
                     self._cal_position(value)
-            return EncoderEvent.ROTATE
+            return self.EVENT_ROTATE
         else:
-            return EncoderEvent.NONE
+            return self.EVENT_NONE
 
     """private methods"""
 
@@ -118,8 +116,8 @@ class RotaryEncoder:
             self._last_press_time = time.ticks_ms()
 
 
-class SSD1306_I2C(SSD1306_I2C_):
-    def __init__(self, width, height, i2c, refresh_rate):
+class Display(SSD1306_I2C_):
+    def __init__(self, width=128, height=64, scl=15, sda=14, refresh_rate=40):
         self.width = width
         self.height = height
         self.FONT_HEIGHT = 8
@@ -127,14 +125,15 @@ class SSD1306_I2C(SSD1306_I2C_):
         self._update_force = False  # force update once regardless of refresh rate
         self._last_update_time = 0
         self._refresh_period = 1000 // refresh_rate
-        super().__init__(width, height, i2c)
+        super().__init__(width, height, I2C(1, scl=Pin(scl), sda=Pin(sda), freq=400000))
 
     def refresh(self):
         """
         Refresh the screen, call this in the main loop.
         It will only update the screen if the screen has been marked as updated by set_update() method.
         And the screen will only be updated at the refresh rate"""
-        if (time.ticks_diff(time.ticks_ms(), self._last_update_time) > self._refresh_period and self._updated) or self._update_force:
+        if (time.ticks_diff(time.ticks_ms(),
+                            self._last_update_time) > self._refresh_period and self._updated) or self._update_force:
             super().show()
             print_log("screen updated")
             self._last_update_time = time.ticks_ms()
@@ -148,13 +147,3 @@ class SSD1306_I2C(SSD1306_I2C_):
             self._update_force = True
         else:
             self._updated = True
-
-    def clear(self):
-        self.fill(0)
-
-
-def init_display(sda=14, scl=15, width=128, height=64, refresh_rate=40):
-    # https://docs.micropython.org/en/latest/esp8266/tutorial/ssd1306.html
-    # https://docs.micropython.org/en/latest/library/framebuf.html
-    i2c = I2C(1, scl=Pin(scl), sda=Pin(sda), freq=400000)
-    return SSD1306_I2C(width, height, i2c, refresh_rate)

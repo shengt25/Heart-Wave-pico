@@ -1,0 +1,30 @@
+"""
+State is a base class for all states.
+
+Every state class must have the following methods:
+- enter: called when the state is entered
+- loop: called repeatedly until the state is changed
+
+Setting next state:
+- To set the next state, call state_machine.set(state_code, args)
+- The state_code is defined in the StateMachine class, the data type is int
+- The args is a list of arguments to pass to the next state's enter method
+"""
+
+
+class State:
+    """common resources:
+    state_machine, rotary_encoder, heart_sensor, ibi_calculator, view"""
+    def __init__(self, state_machine):
+        self._state_machine = state_machine
+        # self._display = state_machine.display
+        self._rotary_encoder = state_machine.rotary_encoder
+        self._heart_sensor = state_machine.heart_sensor
+        self._ibi_calculator = state_machine.ibi_calculator
+        self._view = state_machine.view
+
+    def enter(self, args):
+        raise NotImplementedError("This method must be defined and overridden")
+
+    def loop(self):
+        raise NotImplementedError("This method must be defined and overridden")

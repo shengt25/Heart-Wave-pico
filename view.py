@@ -270,7 +270,7 @@ class ListView:
             text_y = self._y + (i - self._page) * (self._font_height + self._spacing)
             # truncate text if too long
             text = self._items[i]
-            max_text_length = self._max_text_length - 1 * self._read_only  # regardless scroll bar for now
+            max_text_length = self._max_text_length - 1 * (not self._read_only)  # regardless scroll bar for now
             if len(text) > max_text_length:
                 text = text[:max_text_length]
             # display text

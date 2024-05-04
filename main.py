@@ -6,7 +6,7 @@ from state import State
 if __name__ == "__main__":
     # settings:
     GlobalSettings.print_log = False
-    GlobalSettings.nr_files = 3
+    GlobalSettings.files_limit = 1000
     GlobalSettings.save_directory = "Saved_Values"
 
     state_machine = StateMachine()

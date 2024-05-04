@@ -6,7 +6,7 @@ import machine
 
 class GlobalSettings:
     print_log = False
-    nr_files = 3
+    files_limit = 10
     save_directory = "Saved_Values"
 
 

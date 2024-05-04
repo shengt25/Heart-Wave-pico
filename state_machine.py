@@ -5,7 +5,7 @@ from main_menu import MainMenu
 from hr import HREntry, HRMeasure
 from hrv import HRVMeasure, HRVResultCheck, HRVResultShow
 from kubios import KubiosSend
-# from history import HistoryEntry
+from history import HistoryList, HistoryData
 from state import State
 
 
@@ -24,6 +24,8 @@ class StateMachine:
     STATE_HRV_RESULT_CHECK = 9
     STATE_HRV_RESULT_SHOW = 10
     STATE_KUBIOS_SEND = 11
+    STATE_HISTORY_LIST = 12
+    STATE_HISTORY_DATA = 13
 
     # map the state code to each class
     state_dict = {STATE_MENU: MainMenu,
@@ -32,6 +34,8 @@ class StateMachine:
                   STATE_HRV_MEASURE: HRVMeasure,
                   STATE_HRV_RESULT_CHECK: HRVResultCheck,
                   STATE_HRV_RESULT_SHOW: HRVResultShow,
+                  STATE_HISTORY_LIST: HistoryList,
+                  STATE_HISTORY_DATA: HistoryData,
                   STATE_KUBIOS_SEND: KubiosSend}
 
     def __init__(self):

@@ -212,7 +212,7 @@ class ListView:
         print_log(f"List view item per page: {max_display_count}, total: {len(self._items)}")
 
         # set scrollbar
-        if max_display_count > len(self._items):
+        if max_display_count >= len(self._items):
             self._show_scrollbar = False
         else:
             self._show_scrollbar = True
@@ -241,7 +241,7 @@ class ListView:
     def _draw_scrollbar(self):
         scrollbar_width = 5
         slider_width = scrollbar_width - 2
-        assert self._display_count < len(self._items), "No need to draw scroll bar"
+        assert self._display_count <= len(self._items), "No need to draw scroll bar"
 
         slider_y = round(self._page / (len(self._items) - self._display_count) * (
                 self._slider_bottom - self._slider_top - self._slider_height) + self._slider_top)

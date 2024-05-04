@@ -64,16 +64,14 @@ class HistoryData(State):
     def enter(self, args):
         # pass filename
         json_data = load_history_data(args[0])
+        data = ["Date: " + str(json_data["DATE"][:8]), "Time: " + str(json_data["DATE"][9:17]),
+                "HR: " + str(json_data["HR"]), "PPI: " + str(json_data["PPI"]),
+                "RMSSD: " + str(json_data["RMSSD"]), "SDNN: " + str(json_data["SDNN"])]
         if "SNS" in json_data:
-            data = [str(json_data["DATE"]), str(json_data["HR"]), str(json_data["PPI"]),
-                    str(json_data["RMSSD"]), str(json_data["SDNN"]), str(json_data["SNS"]),
-                    str(json_data["PNS"])]
-        else:
-            data = [str(json_data["DATE"]), str(json_data["HR"]), str(json_data["PPI"]),
-                    str(json_data["RMSSD"]), str(json_data["SDNN"])]
+            data.extend(["SNS: " + str(json_data["SNS"]), "PNS: " + str(json_data["PNS"])])
         self._listview_history_data = self._view.add_list(items=data, y=14, read_only=True)
-        self._rotary_encoder.set_rotate_irq(items_count=self._listview_history_data.get_page_max())
-        # todo why +1 ⬆️
+        self._rotary_encoder.set_rotate_irq(items_count=self._listview_history_data.get_page_max() + 1)
+        # page index starts from 0, so add 1 to be the count
 
     def loop(self):
         event = self._rotary_encoder.get_event()

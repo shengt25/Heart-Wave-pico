@@ -37,7 +37,7 @@ def save_system(data):
     # only last two digits for year, because screen is too small to display 4
     # but seconds are important to distinguish files saved in the same minute, just in case
     # seconds will be cut off in listview, also because of the small screen
-    file_name = directory + "/" + date[:5] + "." + date[8:] + ".txt"
+    file_name = directory + "/" + date[:6] + date[8:] + ".txt"
     with open(file_name, "w") as file:
         json.dump(data, file)
     return True

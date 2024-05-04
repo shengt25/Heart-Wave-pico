@@ -16,8 +16,8 @@ class View:
     def add_text(self, text, y, invert=False, vid=None):
         return self._add_view(TextView, vid, text, y, invert)
 
-    def add_list(self, items, y, spacing=2, read_only=False, vid=None):
-        return self._add_view(ListView, vid, items, y, spacing, read_only)
+    def add_list(self, items, y, spacing=2, max_text_length=16, read_only=False, vid=None):
+        return self._add_view(ListView, vid, items, y, spacing, max_text_length, read_only)
 
     def add_graph(self, y, h, x=0, w=128, speed=1, show_box=False, vid=None):
         return self._add_view(GraphView, vid, y, h, x, w, speed, show_box)
@@ -146,7 +146,7 @@ class ListView:
     _arrow_top = array.array('H', [3, 0, 0, 5, 6, 5])  # coordinates array of the poly vertex
     _arrow_bottom = array.array('H', [0, 0, 6, 0, 3, 5])
 
-    def __init__(self, display, items, y, spacing=2, read_only=False):
+    def __init__(self, display, items, y, spacing=2, max_text_length=16, read_only=False):
         self._display = display
         self._font_height = display.FONT_HEIGHT
         self.active = True
@@ -158,9 +158,10 @@ class ListView:
         self._slider_min_height = 2
         # param
         self._items = items
-        self._read_only = read_only
         self._y = y
         self._spacing = spacing
+        self._max_text_length = max_text_length
+        self._read_only = read_only
 
         self._scrollbar_top = self._y + 5 + 3  # 5 is height of arrow, 3 is margin between arrow and scrollbar
         self._scrollbar_bottom = self._display.height - 5 - 3
@@ -223,12 +224,13 @@ class ListView:
         self._page = 0  # set view index to first item
         self.set_selection(0)
 
-    def reinit(self, items, y, spacing=2, read_only=False):
+    def reinit(self, items, y, spacing=2, max_text_length=16, read_only=False):
         self.active = True
         self._items = items
         self._read_only = read_only
         self._y = y
         self._spacing = spacing
+        self._max_text_length = max_text_length
 
         self._scrollbar_top = self._y + 5 + 3
         self._slider_top = self._scrollbar_top + 1  # offset 1 pixel from scrollbar outline
@@ -266,13 +268,19 @@ class ListView:
         for i in range(self._page, self._page + self._display_count):
             print_log(f"List view showing: {i} / {len(self._items) - 1}")
             text_y = self._y + (i - self._page) * (self._font_height + self._spacing)
+            # truncate text if too long
+            text = self._items[i]
+            max_text_length = self._max_text_length - 1 * self._read_only  # regardless scroll bar for now
+            if len(text) > max_text_length:
+                text = text[:max_text_length]
+            # display text
             if self._read_only:
-                self._display.text(self._items[i], 0, text_y)
+                self._display.text(text, 0, text_y)
             else:
                 if i == selection:
-                    self._display.text(">" + self._items[i], 0, text_y)
+                    self._display.text(">" + text, 0, text_y)
                 else:
-                    self._display.text(" " + self._items[i], 0, text_y)
+                    self._display.text(" " + text, 0, text_y)
         if self._show_scrollbar:
             self._draw_scrollbar()
         self._display.set_update()

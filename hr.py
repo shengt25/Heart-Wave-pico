@@ -50,9 +50,9 @@ class HRMeasure(State):
     def __init__(self, state_machine):
         super().__init__(state_machine)
         # data
-        self._last_graph_update_time = time.ticks_ms()
-        self._hr_display_list = []
-        self._ibi_fifo = self._ibi_calculator.get_ibi_fifo()
+        self._last_graph_update_time = None
+        self._hr_display_list = None
+        self._ibi_fifo = self._ibi_calculator.get_ibi_fifo()  # ref of ibi_fifo
         # placeholders for ui
         self._textview_hr = None
         self._graphview = None

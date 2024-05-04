@@ -36,7 +36,7 @@ class MainMenu(State):
                 self._state_machine.set(self._state_machine.STATE_HR_ENTRY, ["HRV Analysis", "-- BPM  30s"])
             elif self._selection == 3:
                 self._state_machine.set_module(self._state_machine.MODULE_HISTORY)
-                self._state_machine.set("later haha")
+                self._state_machine.set(self._state_machine.STATE_HISTORY_LIST)
             else:
                 raise ValueError("Invalid selection index")
             self._rotary_encoder.unset_rotate_irq()

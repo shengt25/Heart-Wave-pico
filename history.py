@@ -22,7 +22,7 @@ class HistoryList(State):
         self._history_dates.extend(files)
         # ui
         self._view.add_text(text="History", y=0, invert=True)
-        self._listview_history_list = self._view.add_list(items=self._history_dates, y=14)
+        self._listview_history_list = self._view.add_list(items=self._history_dates, y=14, max_text_length=15)
         self._listview_history_list.set_page(self._page)
         self._listview_history_list.set_selection(self._selection)
         # rotary encoder

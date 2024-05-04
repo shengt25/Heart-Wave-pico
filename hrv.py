@@ -1,5 +1,5 @@
 import time
-from utils import print_log, pico_rom_stat
+from utils import print_log
 from save_system import save_system
 import machine
 from state import State
@@ -45,7 +45,7 @@ class HRVMeasure(State):
             self._hr_display_list.append(int(60000 / ibi))
             self._ibi_list.append(ibi)
             # if counting down not started, start it when the first ibi is received
-            if self._last_countdown_update_time == 0:
+            if self._last_countdown_update_time == -1:
                 self._last_countdown_update_time = time.ticks_ms()
 
         # update hr every 5 samples
@@ -65,7 +65,7 @@ class HRVMeasure(State):
             self._graphview.set_value(value)
 
         # counting down and update hr text(timer started when the first ibi is received)
-        if (self._last_countdown_update_time != 0 and self._time_left > 0 and
+        if (self._last_countdown_update_time != -1 and self._time_left > 0 and
                 time.ticks_diff(time.ticks_ms(), self._last_countdown_update_time) >= 1000):
             self._time_left -= 1
             self._last_countdown_update_time = time.ticks_ms()
@@ -141,23 +141,14 @@ class HRVResultShow(State):
 
         # create new list elements
         self._view.add_list(items=["HR: " + str(hr) + " BPM", "PPI: " + str(ppi) + " ms",
-                                   "RMSSD: " + str(rmssd) + " ms", "SDNN: " + str(sdnn) + " ms"],
-                            y=14, read_only=True)
+                                   "RMSSD: " + str(rmssd) + " ms", "SDNN: " + str(sdnn) + " ms"], y=14, read_only=True)
 
         # time initialization
         rtc = machine.RTC()
-        year, month, day, second, hour, minute, _, _ = rtc.datetime()
+        year, month, day, _, hour, minute, second, _ = rtc.datetime()
         date = "{:02d}.{:02d}.{} {:02d}:{:02d}:{:02d}".format(day, month, year, hour, minute, second)
-        results = {
-            "DATE": date,
-            "HR": hr,
-            "PPI": ppi,
-            "RMSSD": rmssd,
-            "SDNN": sdnn}
-
+        results = {"DATE": date, "HR": hr, "PPI": ppi, "RMSSD": rmssd, "SDNN": sdnn}
         save_system(results)
-
-        print(f"Free storage: {pico_rom_stat()} KB")
 
     def loop(self):
         # keep watching rotary encoder press event

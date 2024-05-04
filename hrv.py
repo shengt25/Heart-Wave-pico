@@ -142,7 +142,7 @@ class HRVResultShow(State):
         # time initialization
         rtc = machine.RTC()
         year, month, day, _, hour, minute, second, _ = rtc.datetime()
-        date = "{:02d}.{:02d}.{} {:02d}:{:02d}:{:02d}".format(day, month, year, hour, minute, second)
+        date = "{:02d}.{:02d}.{} {:02d}.{:02d}.{:02d}".format(day, month, year, hour, minute, second)
         results = {"DATE": date, "HR": hr, "PPI": ppi, "RMSSD": rmssd, "SDNN": sdnn}
         save_system(results)
 

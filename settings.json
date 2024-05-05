@@ -1,0 +1,9 @@
+{
+  "files_limit": 1000,
+  "wifi_ssid": "",
+  "wifi_password": "",
+  "mqtt_broker_ip": "",
+  "kubios_apikey": "",
+  "kubios_client_id": "",
+  "kubios_client_secret": ""
+}

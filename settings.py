@@ -164,7 +164,9 @@ class SettingsMqtt(State):
             self._textview_ip.set_text("IP: N/A")
             self._display.show()
             # force update display directly, because the next line blocks the program!
+            self._rotary_encoder.unset_button_irq()  # just in case user press button a lot while sending
             self._data_network.connect_mqtt()
+            self._rotary_encoder.set_button_irq()
         # update status
         if not self._data_network.is_mqtt_connected():
             self._textview_info.set_text("Failed")

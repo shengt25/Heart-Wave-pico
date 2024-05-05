@@ -15,7 +15,9 @@ class KubiosAnalysis(State):
         self._view.add_text(text="Sending data...", y=14, vid="text_kubios_send")
         self._display.show()  # force update display directly, because the next line blocks the program!
         print_log("Sending data...")
+        self._rotary_encoder.unset_button_irq()  # just in case user press button a lot while sending
         kubios_success, result = self._state_machine.data_network.get_kubios_analysis(self._ibi_list)
+        self._rotary_encoder.set_button_irq()  # resume after process done
         print_log("Result received")
         if kubios_success:
             # success, save and goto show result

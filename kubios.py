@@ -13,7 +13,7 @@ class KubiosAnalysis(State):
     def enter(self, args):
         self.ibi_list = args[0]
         self.time0 = time.ticks_ms()
-        self._view.add_text(text="Please wait...", y=14, vid="text_kubios_send")
+        self._view.add_text(text="Sending data...", y=14, vid="text_kubios_send")
 
     def loop(self):
         # make sure text is displayed
@@ -39,7 +39,7 @@ class KubiosSend(State):
         else:
             # failed, retry or show HRV result
             self._rotary_encoder.set_rotate_irq(items_count=2, position=0)
-            self._view.select_by_id("text_kubios_send").set_text = "Failed"
+            self._view.select_by_id("text_kubios_send").set_text("Failed sending")
             self._listview_retry = self._view.add_list(items=["Try again", "Show HRV result"], y=34)
 
     def loop(self):

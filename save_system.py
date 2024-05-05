@@ -20,8 +20,7 @@ def check_file_nr():
         return True
     return False
 
-
-def save_system(data):
+def check_home_dir():
     directory = GlobalSettings.save_directory
     try:
         os.stat(directory)
@@ -32,6 +31,10 @@ def save_system(data):
         # The limit can be described in the user manual. By calculation, this limit could be even 7000.
     except OSError:
         os.mkdir(directory)
+    
+def save_system(data):
+    check_home_dir()
+    directory = GlobalSettings.save_directory
     filename = data["DATE"].replace(":", ".")
     # format: DD.MM.YY hh:mm:ss,
     # only last two digits for year, because screen is too small to display 4

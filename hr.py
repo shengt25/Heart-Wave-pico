@@ -61,7 +61,7 @@ class BasicMeasure(State):
         super().__init__(state_machine)
         # data
         self._last_graph_update_time = None
-        self._hr_display_list = None
+        self._hr_display_list = []
         self._ibi_fifo = self._ibi_calculator.get_ibi_fifo()  # ref of ibi_fifo
         # placeholders for ui
         self._textview_hr = []

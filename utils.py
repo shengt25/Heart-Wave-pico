@@ -56,7 +56,7 @@ def load_settings(filename):
             GlobalSettings.kubios_client_id = settings["kubios_client_id"]
             GlobalSettings.kubios_client_secret = settings["kubios_client_secret"]
     except OSError:
-        print_log("Settings file not found")
+        raise OSError("settings.json not found in the root directory.")
 
 
 def get_datetime():

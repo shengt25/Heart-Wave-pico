@@ -178,6 +178,9 @@ class ListView:
     def get_selection_max(self):
         return len(self._items) - 1
 
+    def need_scrollbar(self):
+        return self._show_scrollbar
+
     def set_selection(self, index):
         if not self.active:
             raise ValueError("Trying to set an inactive view component")

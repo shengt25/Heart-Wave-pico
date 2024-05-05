@@ -39,7 +39,7 @@ class KubiosSend(State):
         else:
             # failed, retry or show HRV result
             self._rotary_encoder.set_rotate_irq(items_count=2, position=0)
-            self._view.select_by_id("text_kubios_send").set_text = "Failed"
+            self._view.select_by_id("text_kubios_send").set_text("Failed")
             self._listview_retry = self._view.add_list(items=["Try again", "Show HRV result"], y=34)
 
     def loop(self):

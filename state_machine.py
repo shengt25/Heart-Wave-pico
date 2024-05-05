@@ -7,7 +7,7 @@ from hr import WaitMeasure, BasicMeasure
 from hrv import AdvanceMeasure, AdvanceMeasureCheck, HRVAnalysis
 from kubios import KubiosAnalysis
 from history import HistoryList, ShowResult
-from settings import Settings, SettingsDebugInfo, SettingsWifi, SettingsMqtt, SettingsAbout
+from settings import Settings, SettingsDebugInfo, SettingsWifi, SettingsMqtt, SettingsAbout, SettingsDino
 
 
 class StateMachine:
@@ -33,6 +33,7 @@ class StateMachine:
     STATE_SETTINGS_WIFI = 19
     STATE_SETTINGS_MQTT = 20
     STATE_SETTINGS_ABOUT = 21
+    STATE_SETTINGS_DINO = 22
 
     # map the state code to each class
     state_dict = {STATE_MENU: MainMenu,
@@ -48,7 +49,8 @@ class StateMachine:
                   STATE_SETTINGS_DEBUG_INFO: SettingsDebugInfo,
                   STATE_SETTINGS_WIFI: SettingsWifi,
                   STATE_SETTINGS_MQTT: SettingsMqtt,
-                  STATE_SETTINGS_ABOUT: SettingsAbout
+                  STATE_SETTINGS_ABOUT: SettingsAbout,
+                  STATE_SETTINGS_DINO: SettingsDino
                   }
 
     def __init__(self):

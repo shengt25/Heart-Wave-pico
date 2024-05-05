@@ -39,7 +39,7 @@ class Settings(State):
             elif self._selection == 4:
                 self._state_machine.set(state_code=self._state_machine.STATE_SETTINGS_MQTT)
             elif self._selection == 5:
-                pass
+                self._state_machine.set(state_code=self._state_machine.STATE_SETTINGS_DINO)
             else:
                 raise ValueError("Invalid selection index")
 
@@ -174,6 +174,23 @@ class SettingsMqtt(State):
         else:
             self._textview_info.set_text("Connected")
             self._textview_ip.set_text(self._data_network.get_broker_ip())
+
+    def loop(self):
+        event = self._rotary_encoder.get_event()
+        if event == self._rotary_encoder.EVENT_PRESS:
+            self._view.remove_all()
+            self._state_machine.set(state_code=self._state_machine.STATE_SETTINGS)
+
+
+class SettingsDino(State):
+    def __init__(self, state_machine):
+        super().__init__(state_machine)
+        self._textview_info = None
+
+    def enter(self, args):
+        self._view.remove_all()  # clear screen
+        self._view.add_text(text="Dino", y=0, invert=True)
+        self._textview_info = self._view.add_text(text="Coming soon", y=14)
 
     def loop(self):
         event = self._rotary_encoder.get_event()

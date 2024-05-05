@@ -1,6 +1,6 @@
 from utils import print_log
 import os
-from utils import GlobalSettings
+from utils import GlobalSettings, dict2show_items
 import json
 from state import State
 from save_system import load_history_list, load_history_data
@@ -51,35 +51,39 @@ class HistoryList(State):
                 self._page = self._listview_history_list.get_page()
                 self._rotary_encoder.unset_rotate_irq()
                 self._view.remove(self._listview_history_list)
-                # set state to show data, and pass the filename
-                self._state_machine.set(state_code=self._state_machine.STATE_HISTORY_DATA,
-                                        args=[self._history_dates[self._selection]])
+                # set state to show data, and pass the data
+                data = load_history_data(self._history_dates[self._selection])
+                show_items = dict2show_items(data, show_datetime=True)
+                self._state_machine.set(state_code=self._state_machine.STATE_SHOW_RESULT,
+                                        args=[show_items])
 
 
-class HistoryData(State):
+class ShowResult(State):
     def __init__(self, state_machine):
         super().__init__(state_machine)
-        # ui
-        self._listview_history_data = None
+        self._listview_result = None
 
     def enter(self, args):
-        # pass filename
-        json_data = load_history_data(args[0])
-        data = ["Date: " + str(json_data["DATE"][:8]), "Time: " + str(json_data["DATE"][9:17]),
-                "HR: " + str(json_data["HR"]), "PPI: " + str(json_data["PPI"]),
-                "RMSSD: " + str(json_data["RMSSD"]), "SDNN: " + str(json_data["SDNN"])]
-        if "SNS" in json_data:
-            data.extend(["SNS: " + str(json_data["SNS"]), "PNS: " + str(json_data["PNS"])])
-        self._listview_history_data = self._view.add_list(items=data, y=14, read_only=True)
-        self._rotary_encoder.set_rotate_irq(items_count=self._listview_history_data.get_page_max() + 1)
-        # page index starts from 0, so add 1 to be the count
+        show_items = args[0]
+        self._listview_result = self._view.add_list(items=show_items, y=14, read_only=True)
+        if self._listview_result.need_scrollbar():
+            self._rotary_encoder.set_rotate_irq(items_count=self._listview_result.get_page_max() + 1, position=0)
 
     def loop(self):
+        # keep watching rotary encoder press event
         event = self._rotary_encoder.get_event()
         if event == self._rotary_encoder.EVENT_ROTATE:
-            self._listview_history_data.set_page(self._rotary_encoder.get_position())
-        elif event == self._rotary_encoder.EVENT_PRESS:
-            # back to list, remove listview, unset rotate encoder irq
-            self._view.remove(self._listview_history_data)
+            self._listview_result.set_page(self._rotary_encoder.get_position())
+        if event == self._rotary_encoder.EVENT_PRESS:
             self._rotary_encoder.unset_rotate_irq()
-            self._state_machine.set(state_code=self._state_machine.STATE_HISTORY_LIST)
+            # from measurement, go to main menu
+            if (self._state_machine.current_module == self._state_machine.MODULE_HRV or
+                    self._state_machine.current_module == self._state_machine.MODULE_KUBIOS):
+                self._state_machine.set(state_code=self._state_machine.STATE_MENU)
+                self._view.remove_all()
+            # from history, go back to history list
+            elif self._state_machine.current_module == self._state_machine.MODULE_HISTORY:
+                self._view.remove(self._listview_result)
+                self._state_machine.set(state_code=self._state_machine.STATE_HISTORY_LIST)
+            else:
+                raise ValueError("Undefined result showing module")

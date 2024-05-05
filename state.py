@@ -23,7 +23,7 @@ class State:
         self._ibi_calculator = state_machine.ibi_calculator
         self._view = state_machine.view
         self._data_network = state_machine.data_network
-        # self._display = state_machine.display
+        self._display = state_machine.display
 
     def enter(self, args):
         raise NotImplementedError("This method must be defined and overridden")

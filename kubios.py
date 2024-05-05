@@ -7,33 +7,23 @@ from save_system import save_system
 class KubiosAnalysis(State):
     def __init__(self, state_machine):
         super().__init__(state_machine)
-        self.time0 = None
-        self.ibi_list = []
-
-    def enter(self, args):
-        self.ibi_list = args[0]
-        self.time0 = time.ticks_ms()
-        self._view.add_text(text="Sending data...", y=14, vid="text_kubios_send")
-
-    def loop(self):
-        # make sure text is displayed
-        if time.ticks_ms() - self.time0 > 200:
-            self._state_machine.set(state_code=self._state_machine.STATE_KUBIOS_SEND, args=[self.ibi_list])
-
-
-class KubiosSend(State):
-    def __init__(self, state_machine):
-        super().__init__(state_machine)
         self._ibi_list = []
         self._listview_retry = None
 
     def enter(self, args):
         self._ibi_list = args[0]
+        self._view.add_text(text="Sending data...", y=14, vid="text_kubios_send")
+        self._display.show()  # force update display directly, because the next line blocks the program!
         success, result = self._state_machine.data_network.get_kubios_analysis(self._ibi_list)
         if success:
             # success, save and goto show result
             save_system(result)
-            self._state_machine.set(state_code=self._state_machine.STATE_SHOW_RESULT, args=[dict2show_items(result)])
+            show_items = dict2show_items(result)
+            # send to mqtt
+            success = self._state_machine.data_network.mqtt_publish(result)
+            if not success:
+                show_items.extend(["---", "MQTT failed", "Check network"])
+            self._state_machine.set(state_code=self._state_machine.STATE_SHOW_RESULT, args=[show_items])
             self._view.remove_by_id("text_kubios_send")
             return
         else:

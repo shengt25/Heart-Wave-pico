@@ -1,12 +1,12 @@
 import time
-from utils import print_log
+from utils import print_log, get_datetime, dict2show_items
 from save_system import save_system
 import machine
 from state import State
 from data_processing import calculate_hrv
 
 
-class HRVMeasure(State):
+class AdvanceMeasure(State):
     def __init__(self, state_machine):
         super().__init__(state_machine)
         # data
@@ -34,7 +34,7 @@ class HRVMeasure(State):
         self._ibi_calculator.reinit()
         # ui elements
         self._graphview = self._view.add_graph(y=14, h=64 - 14 - 12)
-        self._textview_hr = self._view.select_by_id("hr")
+        self._textview_hr = self._view.select_by_id("text_hr")  # this element was created in HREntry state
         self._heart_sensor.start()
 
     def loop(self):
@@ -79,7 +79,7 @@ class HRVMeasure(State):
             self._heart_sensor.stop()
             self._view.remove(self._graphview)
             self._view.remove(self._textview_hr)
-            self._state_machine.set(state_code=self._state_machine.STATE_HRV_RESULT_CHECK, args=[self._ibi_list])
+            self._state_machine.set(state_code=self._state_machine.STATE_ADVANCE_MEASURE_CHECK, args=[self._ibi_list])
             return
 
         # rotary encoder event: press
@@ -91,24 +91,26 @@ class HRVMeasure(State):
             return
 
 
-class HRVResultCheck(State):
+class AdvanceMeasureCheck(State):
     def __init__(self, state_machine):
         super().__init__(state_machine)
         self._listview_retry = None
 
     def enter(self, args):
         ibi_list = args[0]
-        # data not enough, retry or exit
-        if len(ibi_list) < 10:
-            self._view.add_text(text="Not enough data", y=14, vid="info1")
+        if len(ibi_list) > 10:
+            # data ok, go to hrv or kubios
+            if self._state_machine.current_module == self._state_machine.MODULE_HRV:
+                self._state_machine.set(state_code=self._state_machine.STATE_HRV_ANALYSIS, args=[ibi_list])
+            elif self._state_machine.current_module == self._state_machine.MODULE_KUBIOS:
+                self._state_machine.set(state_code=self._state_machine.STATE_KUBIOS_ANALYSIS, args=[ibi_list])
+            else:
+                raise ValueError("Invalid module code")
+            return
+        else:
+            self._view.add_text(text="Not enough data", y=14, vid="text_check_error")
             self._listview_retry = self._view.add_list(items=["Try again", "Exit"], y=34)
             self._rotary_encoder.set_rotate_irq(items_count=2, position=0)
-        else:
-            # data ok, show result, or go to kubios
-            if self._state_machine.current_module == self._state_machine.MODULE_HRV:
-                self._state_machine.set(state_code=self._state_machine.STATE_HRV_RESULT_SHOW, args=[ibi_list])
-            elif self._state_machine.current_module == self._state_machine.MODULE_KUBIOS:
-                self._state_machine.set(state_code=self._state_machine.STATE_KUBIOS_SEND, args=[ibi_list])
 
     def loop(self):
         """if check not enough, then goes here"""
@@ -117,40 +119,36 @@ class HRVResultCheck(State):
             self._listview_retry.set_selection(self._rotary_encoder.get_position())
         elif event == self._rotary_encoder.EVENT_PRESS:
             self._rotary_encoder.unset_rotate_irq()
-            self._view.remove_all()
+            self._view.remove_all()  # main menu needs to be re-created, wait measure also will re-create heading
             if self._rotary_encoder.get_position() == 0:
-                self._state_machine.set(state_code=self._state_machine.STATE_HR_ENTRY)
+                self._state_machine.set(state_code=self._state_machine.STATE_WAIT_MEASURE)
             elif self._rotary_encoder.get_position() == 1:
                 self._state_machine.set(state_code=self._state_machine.STATE_MENU)
             else:
                 raise ValueError("Invalid selection index")
 
 
-class HRVResultShow(State):
+class HRVAnalysis(State):
     def __init__(self, state_machine):
         super().__init__(state_machine)
+        self._listview_retry = None
 
     def enter(self, args):
-        # calculating result
         ibi_list = args[0]
         hr, ppi, rmssd, sdnn = calculate_hrv(ibi_list)
-
-        # create new list elements
-        self._view.add_list(items=["HR: " + str(hr) + " BPM", "PPI: " + str(ppi) + " ms",
-                                   "RMSSD: " + str(rmssd) + " ms", "SDNN: " + str(sdnn) + " ms"], y=14, read_only=True)
-
-        # time initialization
-        rtc = machine.RTC()
-        year, month, day, _, hour, minute, second, _ = rtc.datetime()
-        year = year % 100  # only last 2 digits
-        date = "{:02d}.{:02d}.{} {:02d}.{:02d}.{:02d}".format(day, month, year, hour, minute, second)
-        results = {"DATE": date, "HR": hr, "PPI": ppi, "RMSSD": rmssd, "SDNN": sdnn}
-        save_system(results)
+        # save data
+        result = {"DATE": get_datetime(),
+                  "HR": str(hr) + "BPM",
+                  "PPI": str(ppi) + "ms",
+                  "RMSSD": str(rmssd) + "ms",
+                  "SDNN": str(sdnn) + "ms"}
+        save_system(result)
+        show_items = dict2show_items(result)
+        # send to mqtt
+        success = self._state_machine.data_network.mqtt_publish(result)
+        if not success:
+            show_items.extend(["---", "MQTT failed", "Check network"])
+        self._state_machine.set(state_code=self._state_machine.STATE_SHOW_RESULT, args=[show_items])
 
     def loop(self):
-        # keep watching rotary encoder press event
-        event = self._rotary_encoder.get_event()
-        if event == self._rotary_encoder.EVENT_PRESS:
-            # remove all ui elements and exit to main menu
-            self._view.remove_all()
-            self._state_machine.set(state_code=self._state_machine.STATE_MENU)
+        return

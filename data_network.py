@@ -10,12 +10,12 @@ class DataNetwork:
         self._wlan = network.WLAN(network.STA_IF)
         self._mqtt_client = MQTTClient("", GlobalSettings.mqtt_broker_ip)
 
-    def wlan_connect(self):
+    def connect_wlan(self):
         if not self._wlan.isconnected():
             self._wlan.active(True)
             self._wlan.connect(GlobalSettings.wifi_ssid, GlobalSettings.wifi_password)
 
-    def mqtt_connect(self):
+    def connect_mqtt(self):
         try:
             self._mqtt_client.connect(clean_session=True)
         except:
@@ -35,6 +35,12 @@ class DataNetwork:
 
     def is_wlan_connected(self):
         return self._wlan.isconnected()
+
+    def get_wlan_ip(self):
+        return self._wlan.ifconfig()[0]
+
+    def get_broker_ip(self):
+        return GlobalSettings.mqtt_broker_ip
 
     def is_mqtt_connected(self):
         try:
@@ -60,7 +66,6 @@ class DataNetwork:
                                      headers={"Authorization": "Bearer {}".format(access_token), "X-Api-Key": APIKEY},
                                      json=dataset)
             analysis = response.json()["analysis"]
-
             result = {"DATE": get_datetime(),
                       "HR": str(round(analysis["mean_hr_bpm"], 2)) + "BPM",
                       "PPI": str(round(analysis["mean_rr_ms"], 2)) + "ms",
@@ -70,6 +75,6 @@ class DataNetwork:
                       "PNS": str(round(analysis["pns_index"], 2)),
                       "STRESS": str(round(analysis["stress_index"], 2))}
         except Exception as e:
-            print_log("Kubios analysis failed: {}".format(e))
+            print_log(f"Kubios analysis failed: {e}")
             return False, None
         return True, result

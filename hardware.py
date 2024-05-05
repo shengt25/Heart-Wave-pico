@@ -76,6 +76,12 @@ class RotaryEncoder:
     def unset_rotate_irq(self):
         self._dt.irq(handler=None)
 
+    def set_button_irq(self):
+        self._button.irq(trigger=Pin.IRQ_RISING, handler=self._press_handler, hard=True)
+
+    def unset_button_irq(self):
+        self._button.irq(handler=None)
+
     def get_position(self):
         """Get the current absolute position of the encoder."""
         print_log("Encoder position:" + str(self._position))

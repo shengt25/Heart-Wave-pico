@@ -9,7 +9,7 @@ if __name__ == "__main__":
     # init state machine
     state_machine = StateMachine()
     # connect wlan
-    state_machine.data_network.wlan_connect()
+    state_machine.data_network.connect_wlan()
     # start from main menu
     state_machine.set(state_code=state_machine.STATE_MENU)
     # check for save directory

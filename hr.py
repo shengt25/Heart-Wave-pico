@@ -24,6 +24,7 @@ class WaitMeasure(State):
             hr_text = "-- BPM  30s"
         else:
             raise ValueError("Invalid module code")
+        self._view.remove_all()  # clear screen
         self._view.add_text(text="Put finger on ", y=14, vid="text_put_finger1")
         self._view.add_text(text="sensor to start", y=24, vid="text_put_finger2")
         self._view.add_text(text=heading_text, y=0, invert=True, vid="text_heading")  # 'invert' gives it a background

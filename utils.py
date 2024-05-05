@@ -28,9 +28,9 @@ def pico_stat():
     Because every time Thonny prints to the console, it uses some memory as print history buffer.
     Those part of memory will be freed automatically after buffer is full.
     The result is accurate when running on the board itself."""
-    ram_free = gc.mem_free()
-    ram_used = gc.mem_alloc()
-    ram_total = ram_free + ram_used
+    ram_free = round(gc.mem_free() / 1024, 2)
+    ram_used = round(gc.mem_alloc() / 1024, 2)
+    ram_total = round(ram_free + ram_used, 2)
     s = os.statvfs('/')
     storage_free = s[0] * s[3] / 1024
     return ram_used, ram_free, ram_total, storage_free

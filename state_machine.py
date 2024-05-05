@@ -7,6 +7,7 @@ from hr import WaitMeasure, BasicMeasure
 from hrv import AdvanceMeasure, AdvanceMeasureCheck, HRVAnalysis
 from kubios import KubiosAnalysis
 from history import HistoryList, ShowResult
+from settings import Settings, SettingsDebugInfo, SettingsWifi, SettingsMqtt, SettingsAbout, SettingsDino
 
 
 class StateMachine:
@@ -28,10 +29,11 @@ class StateMachine:
     STATE_HISTORY_LIST = 15
     STATE_SHOW_RESULT = 16
     STATE_SETTINGS = 17
-    STATE_SETTINGS_INFO = 18
+    STATE_SETTINGS_DEBUG_INFO = 18
     STATE_SETTINGS_WIFI = 19
     STATE_SETTINGS_MQTT = 20
     STATE_SETTINGS_ABOUT = 21
+    STATE_SETTINGS_DINO = 22
 
     # map the state code to each class
     state_dict = {STATE_MENU: MainMenu,
@@ -42,7 +44,14 @@ class StateMachine:
                   STATE_HRV_ANALYSIS: HRVAnalysis,
                   STATE_KUBIOS_ANALYSIS: KubiosAnalysis,
                   STATE_HISTORY_LIST: HistoryList,
-                  STATE_SHOW_RESULT: ShowResult}
+                  STATE_SHOW_RESULT: ShowResult,
+                  STATE_SETTINGS: Settings,
+                  STATE_SETTINGS_DEBUG_INFO: SettingsDebugInfo,
+                  STATE_SETTINGS_WIFI: SettingsWifi,
+                  STATE_SETTINGS_MQTT: SettingsMqtt,
+                  STATE_SETTINGS_ABOUT: SettingsAbout,
+                  STATE_SETTINGS_DINO: SettingsDino
+                  }
 
     def __init__(self):
         self.display = Display(refresh_rate=40)
@@ -91,3 +100,6 @@ class StateMachine:
         """The module is used to determine the next state accordingly,
         it's set up only by the main menu"""
         self.current_module = module
+
+    def get_states_info(self):
+        return self._states

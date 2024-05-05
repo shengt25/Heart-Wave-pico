@@ -14,15 +14,19 @@ class KubiosAnalysis(State):
         self._ibi_list = args[0]
         self._view.add_text(text="Sending data...", y=14, vid="text_kubios_send")
         self._display.show()  # force update display directly, because the next line blocks the program!
-        success, result = self._state_machine.data_network.get_kubios_analysis(self._ibi_list)
-        if success:
+        print_log("Sending data...")
+        self._rotary_encoder.unset_button_irq()  # just in case user press button a lot while sending
+        kubios_success, result = self._state_machine.data_network.get_kubios_analysis(self._ibi_list)
+        self._rotary_encoder.set_button_irq()  # resume after process done
+        print_log("Result received")
+        if kubios_success:
             # success, save and goto show result
             save_system(result)
             show_items = dict2show_items(result)
             # send to mqtt
-            success = self._state_machine.data_network.mqtt_publish(result)
-            if not success:
-                show_items.extend(["---", "MQTT failed", "Check network"])
+            mqtt_success = self._state_machine.data_network.mqtt_publish(result)
+            if not mqtt_success:
+                show_items.extend(["---", "MQTT failed", "Check settings"])
             self._state_machine.set(state_code=self._state_machine.STATE_SHOW_RESULT, args=[show_items])
             self._view.remove_by_id("text_kubios_send")
             return

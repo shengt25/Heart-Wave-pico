@@ -44,9 +44,6 @@ class AdvanceMeasure(State):
             ibi = self._ibi_fifo.get()
             self._hr_display_list.append(int(60000 / ibi))
             self._ibi_list.append(ibi)
-            # if counting down not started, start it when the first ibi is received
-            if self._last_countdown_update_time == -1:
-                self._last_countdown_update_time = time.ticks_ms()
 
         # update hr every 5 samples
         if len(self._hr_display_list) >= self._hr_update_interval:
@@ -64,15 +61,18 @@ class AdvanceMeasure(State):
             value = self._heart_sensor.read()
             self._graphview.set_value(value)
 
-        # counting down and update hr text(timer started when the first ibi is received)
-        if (self._last_countdown_update_time != -1 and self._time_left > 0 and
-                time.ticks_diff(time.ticks_ms(), self._last_countdown_update_time) >= 1000):
-            self._time_left -= 1
-            self._last_countdown_update_time = time.ticks_ms()
-            if self._hr == 0:
-                self._textview_hr.set_text("-- BPM  " + str(self._time_left) + "s")
-            else:
-                self._textview_hr.set_text(str(self._hr) + " BPM  " + str(self._time_left) + "s")
+        # counting down and update hr text(timer started)
+        if self._last_countdown_update_time == -1:
+            if len(self._ibi_list) > 2:  # start countdown timer when 2 ibi data received
+                self._last_countdown_update_time = time.ticks_ms()
+        else:
+            if self._time_left > 0 and time.ticks_diff(time.ticks_ms(), self._last_countdown_update_time) >= 1000:
+                self._time_left -= 1
+                self._last_countdown_update_time = time.ticks_ms()
+                if self._hr == 0:
+                    self._textview_hr.set_text("-- BPM  " + str(self._time_left) + "s")
+                else:
+                    self._textview_hr.set_text(str(self._hr) + " BPM  " + str(self._time_left) + "s")
 
         # exit when time's up
         if self._time_left <= 0:
@@ -145,9 +145,9 @@ class HRVAnalysis(State):
         save_system(result)
         show_items = dict2show_items(result)
         # send to mqtt
-        success = self._state_machine.data_network.mqtt_publish(result)
-        if not success:
-            show_items.extend(["---", "MQTT failed", "Check network"])
+        mqtt_success = self._state_machine.data_network.mqtt_publish(result)
+        if not mqtt_success:
+            show_items.extend(["---", "MQTT failed", "Check settings"])
         self._state_machine.set(state_code=self._state_machine.STATE_SHOW_RESULT, args=[show_items])
 
     def loop(self):

@@ -1,37 +1,59 @@
 import time
-from hardware import EncoderEvent
-from utils import print_log, pico_rom_stat
-from hr import HREntry
-from hrv import HRVEntry, HRVMeasure
+from utils import print_log, dict2show_items
 from state import State
+from save_system import save_system
 
 
-class KubiosEntry(HREntry):
+class KubiosAnalysis(State):
     def __init__(self, state_machine):
         super().__init__(state_machine)
-        self._hr_update_interval = 5  # number of sample needed to update the HR display
-        self._start_threshold = 200  # threshold that triggers measurement automatically when finger is placed
-        self._heading_text = "Kubios Analysis"
-        self._hr_text = "-- BPM  30s"
+        self.time0 = None
+        self.ibi_list = []
 
-    def exit(self):
-        self._state_machine.set(KubiosMeasure)
-
-
-class KubiosMeasure(HRVMeasure):
-    def exit(self):
-        self._state_machine.set(KubiosResult, self._ibi_list)
-
-
-class KubiosResult(State):
-    def __init__(self, state_machine, ibi_list):
-        super().__init__(state_machine)
-
-    def enter(self):
-        print("Kubios Result")
-        # todo implement Kubios result
+    def enter(self, args):
+        self.ibi_list = args[0]
+        self.time0 = time.ticks_ms()
+        self._view.add_text(text="Please wait...", y=14, vid="text_kubios_send")
 
     def loop(self):
+        # make sure text is displayed
+        if time.ticks_ms() - self.time0 > 200:
+            self._state_machine.set(state_code=self._state_machine.STATE_KUBIOS_SEND, args=[self.ibi_list])
+
+
+class KubiosSend(State):
+    def __init__(self, state_machine):
+        super().__init__(state_machine)
+        self._ibi_list = []
+        self._listview_retry = None
+
+    def enter(self, args):
+        self._ibi_list = args[0]
+        success, result = self._state_machine.data_network.get_kubios_analysis(self._ibi_list)
+        if success:
+            # success, save and goto show result
+            save_system(result)
+            self._state_machine.set(state_code=self._state_machine.STATE_SHOW_RESULT, args=[dict2show_items(result)])
+            self._view.remove_by_id("text_kubios_send")
+            return
+        else:
+            # failed, retry or show HRV result
+            self._rotary_encoder.set_rotate_irq(items_count=2, position=0)
+            self._view.select_by_id("text_kubios_send").set_text = "Failed"
+            self._listview_retry = self._view.add_list(items=["Try again", "Show HRV result"], y=34)
+
+    def loop(self):
+        # send failed, retry or show HRV result
         event = self._rotary_encoder.get_event()
-        if event == EncoderEvent.PRESS:
-            self._state_machine.set(State.Main_Menu)
+        if event == self._rotary_encoder.EVENT_ROTATE:
+            self._listview_retry.set_selection(self._rotary_encoder.get_position())
+        if event == self._rotary_encoder.EVENT_PRESS:
+            self._state_machine.rotary_encoder.unset_rotate_irq()
+            self._view.remove_by_id("text_kubios_send")
+            self._view.remove(self._listview_retry)
+            if self._rotary_encoder.get_position() == 0:
+                self._state_machine.set(state_code=self._state_machine.STATE_KUBIOS_ANALYSIS, args=[self._ibi_list])
+            elif self._rotary_encoder.get_position() == 1:
+                self._state_machine.set(state_code=self._state_machine.STATE_HRV_ANALYSIS, args=[self._ibi_list])
+            else:
+                raise ValueError("Invalid selection index")

@@ -32,12 +32,12 @@ def save_system(data):
         # The limit can be described in the user manual. By calculation, this limit could be even 7000.
     except OSError:
         os.mkdir(directory)
-    date = data["DATE"]
+    filename = data["DATE"].replace(":", ".")
     # format: DD.MM.YY hh:mm:ss,
     # only last two digits for year, because screen is too small to display 4
-    # but seconds are important to distinguish files saved in the same minute, just in case
+    # but seconds are important to distinguish files saved in the same minute, when measuring multiple times fast
     # seconds will be cut off in listview, also because of the small screen
-    file_name = directory + "/" + date[:5] + "." + date[8:] + ".txt"
+    file_name = directory + "/" + filename + ".txt"
     with open(file_name, "w") as file:
         json.dump(data, file)
     return True
@@ -53,5 +53,5 @@ def load_history_data(file_name):
     directory = GlobalSettings.save_directory + "/"
     path = directory + file_name
     with open(path, 'r') as file:
-        json_data = json.load(file)
-    return json_data
+        data = json.load(file)
+    return data

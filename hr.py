@@ -3,7 +3,7 @@ import time
 from state import State
 
 
-class HREntry(State):
+class WaitMeasure(State):
     """Entry point for any measurement: HR, HRV, Kubios"""
 
     def __init__(self, state_machine):
@@ -13,48 +13,58 @@ class HREntry(State):
 
     def enter(self, args):
         # take arguments: heading_text, hr_text
-        heading_text, hr_text = args[0], args[1]
-        self._view.add_text(text="Put finger on ", y=14, vid="info1")
-        self._view.add_text(text="sensor to start", y=24, vid="info2")
-        self._view.add_text(text=heading_text, y=0, invert=True, vid="heading")  # 'invert' gives it a background
-        self._view.add_text(text=hr_text, y=64 - 8, vid="hr")
+        if self._state_machine.current_module == self._state_machine.MODULE_HR:
+            heading_text = "HR Measure"
+            hr_text = "-- BPM"
+        elif self._state_machine.current_module == self._state_machine.MODULE_HRV:
+            heading_text = "HRV Analysis"
+            hr_text = "-- BPM  30s"
+        elif self._state_machine.current_module == self._state_machine.MODULE_KUBIOS:
+            heading_text = "Kubios Analysis"
+            hr_text = "-- BPM  30s"
+        else:
+            raise ValueError("Invalid module code")
+        self._view.add_text(text="Put finger on ", y=14, vid="text_put_finger1")
+        self._view.add_text(text="sensor to start", y=24, vid="text_put_finger2")
+        self._view.add_text(text=heading_text, y=0, invert=True, vid="text_heading")  # 'invert' gives it a background
+        self._view.add_text(text=hr_text, y=64 - 8, vid="text_hr")
 
     def loop(self):
         # check finger on sensor
         value = self._heart_sensor.read()
         if value < self._start_threshold:
             # keep heading and hr text, remove the rest
-            self._view.remove_by_id("info1")
-            self._view.remove_by_id("info2")
+            self._view.remove_by_id("text_put_finger1")
+            self._view.remove_by_id("text_put_finger2")
             # HR -> HR Measure, HRV
             if self._state_machine.current_module == self._state_machine.MODULE_HR:
-                self._state_machine.set(state_code=self._state_machine.STATE_HR_MEASURE)
+                self._state_machine.set(state_code=self._state_machine.STATE_BASIC_MEASURE)
             # HRV -> HRV Measure
             elif self._state_machine.current_module == self._state_machine.MODULE_HRV:
-                self._state_machine.set(state_code=self._state_machine.STATE_HRV_MEASURE)
+                self._state_machine.set(state_code=self._state_machine.STATE_ADVANCE_MEASURE)
             # Kubios -> HRV Measure (same state, but module code will distinguish)
             elif self._state_machine.current_module == self._state_machine.MODULE_KUBIOS:
-                self._state_machine.set(state_code=self._state_machine.STATE_HRV_MEASURE)
+                self._state_machine.set(state_code=self._state_machine.STATE_ADVANCE_MEASURE)
             return
         # handle rotary encoder event: press
         event = self._rotary_encoder.get_event()
         if event == self._rotary_encoder.EVENT_PRESS:
             # keep heading and hr text, remove the rest
-            self._view.remove_by_id("info1")
-            self._view.remove_by_id("info2")
+            self._view.remove_by_id("text_put_finger1")
+            self._view.remove_by_id("text_put_finger2")
             self._state_machine.set(state_code=self._state_machine.STATE_MENU)
             return
 
 
-class HRMeasure(State):
+class BasicMeasure(State):
     def __init__(self, state_machine):
         super().__init__(state_machine)
         # data
         self._last_graph_update_time = None
-        self._hr_display_list = None
+        self._hr_display_list = []
         self._ibi_fifo = self._ibi_calculator.get_ibi_fifo()  # ref of ibi_fifo
         # placeholders for ui
-        self._textview_hr = None
+        self._textview_hr = []
         self._graphview = None
         # settings
         self._hr_update_interval = 5  # number of sample
@@ -65,9 +75,9 @@ class HRMeasure(State):
         self._hr_display_list.clear()
         self._ibi_calculator.reinit()  # remember to reinit the calculator before use every time
         # ui
-        # assigned to self.xxx, no need to select_by_id in loop()
-        self._textview_hr = self._view.select_by_id("hr")
-        self._graphview = self._view.add_graph(y=14, h=64 - 14 - 12, vid="graph")
+        # assigned to self.xxx, avoid select_by_id in loop()
+        self._textview_hr = self._view.select_by_id("text_hr")
+        self._graphview = self._view.add_graph(y=14, h=64 - 14 - 12)
         self._heart_sensor.start()  # start lastly to reduce the chance of data piling, maybe not needed
 
     def loop(self):

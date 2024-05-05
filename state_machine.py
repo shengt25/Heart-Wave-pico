@@ -5,7 +5,7 @@ from data_network import DataNetwork
 from main_menu import MainMenu
 from hr import WaitMeasure, BasicMeasure
 from hrv import AdvanceMeasure, AdvanceMeasureCheck, HRVAnalysis
-from kubios import KubiosSend, KubiosAnalysis
+from kubios import KubiosAnalysis
 from history import HistoryList, ShowResult
 
 
@@ -25,7 +25,6 @@ class StateMachine:
     STATE_ADVANCE_MEASURE_CHECK = 10
     STATE_HRV_ANALYSIS = 11
     STATE_KUBIOS_ANALYSIS = 12
-    STATE_KUBIOS_SEND = 13
     STATE_HISTORY_LIST = 15
     STATE_SHOW_RESULT = 16
     STATE_SETTINGS = 17
@@ -42,7 +41,6 @@ class StateMachine:
                   STATE_ADVANCE_MEASURE_CHECK: AdvanceMeasureCheck,
                   STATE_HRV_ANALYSIS: HRVAnalysis,
                   STATE_KUBIOS_ANALYSIS: KubiosAnalysis,
-                  STATE_KUBIOS_SEND: KubiosSend,
                   STATE_HISTORY_LIST: HistoryList,
                   STATE_SHOW_RESULT: ShowResult}
 

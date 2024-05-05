@@ -1,73 +1,59 @@
 import time
-from hardware import EncoderEvent
-from utils import print_log, pico_rom_stat
-from hrv import HRV
-
-"""
-1. _state_xxx_init
-   1.1 initialize variables, create ui elements, set up interrupt/timer, etc
-   1.2 goto to _state_xxx immediately (this state run only once)
-2. _state_xxx_loop
-   1.1 during loop, check for event: keep looping, or exit
-   1.2 before leave, remember to remove unneeded ui elements, interrupt/timer etc"""
-
-"""Kubios is inherited from HRV, because the only differences are after measurement."""
+from utils import print_log, dict2show_items
+from state import State
+from save_system import save_system
 
 
-class Kubios(HRV):
-    def __init__(self, hardware, state_machine, view, ibi_calculator):
-        super().__init__(hardware, state_machine, view, ibi_calculator)
-        self._heading_text = "Kubios Analysis"
+class KubiosAnalysis(State):
+    def __init__(self, state_machine):
+        super().__init__(state_machine)
+        self.time0 = None
+        self.ibi_list = []
 
-    def _state_after_measure(self):
-        """Override the parent method as an entry point"""
-        self._state_machine.set(self._state_show_result_init)
-        # jump to _state_show_result_init for now
+    def enter(self, args):
+        self.ibi_list = args[0]
+        self.time0 = time.ticks_ms()
+        self._view.add_text(text="Sending data...", y=14, vid="text_kubios_send")
 
-    def _state_send_data_init(self):
-        pass
+    def loop(self):
+        # make sure text is displayed
+        if time.ticks_ms() - self.time0 > 200:
+            self._state_machine.set(state_code=self._state_machine.STATE_KUBIOS_SEND, args=[self.ibi_list])
 
-    def _state_send_data_loop(self):
-        pass
 
-    def _state_receive_data_init(self):
-        pass
+class KubiosSend(State):
+    def __init__(self, state_machine):
+        super().__init__(state_machine)
+        self._ibi_list = []
+        self._listview_retry = None
 
-    def __state_receive_data_loop(self):
-        pass
+    def enter(self, args):
+        self._ibi_list = args[0]
+        success, result = self._state_machine.data_network.get_kubios_analysis(self._ibi_list)
+        if success:
+            # success, save and goto show result
+            save_system(result)
+            self._state_machine.set(state_code=self._state_machine.STATE_SHOW_RESULT, args=[dict2show_items(result)])
+            self._view.remove_by_id("text_kubios_send")
+            return
+        else:
+            # failed, retry or show HRV result
+            self._rotary_encoder.set_rotate_irq(items_count=2, position=0)
+            self._view.select_by_id("text_kubios_send").set_text("Failed sending")
+            self._listview_retry = self._view.add_list(items=["Try again", "Show HRV result"], y=34)
 
-    def _state_show_result_init(self):
-        # todo
-        # interpreting result
-        hr = 0
-        ppi = 0
-        rmssd = 0
-        sdnn = 0
-        sns = 0
-        pns = 0
-
-        # create new text elements
-        self._list_result = self._view.add_list(items=["HR: " + str(hr),
-                                                       "PPI: " + str(ppi),
-                                                       "RMSSD: " + str(rmssd),
-                                                       "SDNN: " + str(sdnn),
-                                                       "SNS: " + str(sns),
-                                                       "PNS: " + str(pns)], y=14, read_only=True)
-        self._rotary_encoder.set_rotate_irq(items_count=self._list_result.get_max_page() + 1)
-
-        # todo
-        # save result
-        print(f"Free storage: {pico_rom_stat()} KB")
-
-        # goto next state (a loop)
-        self._state_machine.set(self._state_show_result_loop)
-
-    def _state_show_result_loop(self):
+    def loop(self):
+        # send failed, retry or show HRV result
         event = self._rotary_encoder.get_event()
-        if event == EncoderEvent.ROTATE:
-            self._list_result.set_page(self._rotary_encoder.get_position())
-        elif event == EncoderEvent.PRESS:
-            # remove all ui elements, unset rotary encoder interrupt, and exit to main menu
-            self._view.remove_all()
-            self._rotary_encoder.unset_rotate_irq()
-            self._state_machine.set(self._state_machine.main_menu.enter)
+        if event == self._rotary_encoder.EVENT_ROTATE:
+            self._listview_retry.set_selection(self._rotary_encoder.get_position())
+        if event == self._rotary_encoder.EVENT_PRESS:
+            self._state_machine.rotary_encoder.unset_rotate_irq()
+            self._view.remove_by_id("text_kubios_send")
+            self._view.remove(self._listview_retry)
+            if self._rotary_encoder.get_position() == 0:
+                self._state_machine.set(state_code=self._state_machine.STATE_KUBIOS_ANALYSIS, args=[self._ibi_list])
+            elif self._rotary_encoder.get_position() == 1:
+                self._state_machine.set(state_code=self._state_machine.STATE_HRV_ANALYSIS, args=[self._ibi_list])
+            else:
+                raise ValueError("Invalid selection index")

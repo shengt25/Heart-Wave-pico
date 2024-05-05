@@ -1,95 +1,89 @@
 from utils import print_log
-from hardware import EncoderEvent
-
-"""
-1. _state_xxx_init
-   1.1 initialize variables, create ui elements, set up interrupt/timer, etc
-   1.2 goto to _state_xxx immediately
-2. _state_xxx_loop
-   1.1 during loop, check for event: keep looping, or exit
-   1.2 before leave, remember to remove unneeded ui elements, interrupt/timer etc"""
+import os
+from utils import GlobalSettings, dict2show_items
+import json
+from state import State
+from save_system import load_history_list, load_history_data
 
 
-class History:
-    def __init__(self, hardware, state_machine, view):
-        # hardware
-        self._display = hardware.display
-        self._rotary_encoder = hardware.rotary_encoder
+class HistoryList(State):
+    def __init__(self, state_machine):
+        super().__init__(state_machine)
+        self._selection = 0  # to preserve selected index, resume when exit and re-enter
+        self._page = 0  # to preserve page index, resume when exit and re-enter
+        self._history_dates = []
         # ui
-        self._view = view
-        self._list_history_list = None
-        self._text_heading = None
+        self._listview_history_list = None
 
-        # other
-        self._history_dates = None
-        self._history_data = None
-        self._selection = 0
-        self._page = 0
-        self._state_machine = state_machine
-
-    def enter(self):
-        print_log("History: enter")
-        self._text_heading = self._view.add_text(text="History", y=0, invert=True)
-        self._selection = 0  # reset selected index
-        self._page = 0  # reset view index start
-        self._state_machine.set(self._state_show_list_init)
-
-    def _load_history_list(self):
-        # dummy data
-        # The first item is always "back", append dates after it
-        self._history_dates = ["back", "18.04.24 21:20", "18.04.24 21:20", "18.04.24 21:20", "18.04.24 21:20",
-                               "18.04.24 21:20", "18.04.24 21:20", "18.04.24 21:20", "18.04.24 21:20", "18.04.24 21:20",
-                               "18.04.24 21:20", "18.04.24 21:20", "18.04.24 21:20"]
-
-    def _load_data(self):
-        # dummy data
-        # data is defined: date, time, HR, PPI, RMSSD, SDNN, SNS, PNS
-        self._history_data = ["Date: 21.04.24", "21:20:50", "", "HR: 65", "PPI: 556", "RMSSD: 0.123",
-                              "SDNN: 0.456", "SNS: 1.235", "PNS: 1.336"]
-
-    def _state_show_list_init(self):
+    def enter(self, args):
         # load data
-        self._load_history_list()
-        # create ui elements
-        self._list_history_list = self._view.add_list(items=self._history_dates, y=14)
-        self._list_history_list.set_page(self._page)
-        self._list_history_list.set_selection(self._selection)
-        # other
-        self._rotary_encoder.set_rotate_irq(items_count=len(self._history_dates), position=self._selection,
-                                            loop_mode=False)
-        self._state_machine.set(self._state_show_list_loop)
+        self._history_dates.clear()
+        self._history_dates.append("Back")
+        files = load_history_list()
+        self._history_dates.extend(files)
+        # ui
+        self._view.add_text(text="History", y=0, invert=True)
+        self._listview_history_list = self._view.add_list(items=self._history_dates, y=14, max_text_length=15)
+        self._listview_history_list.set_page(self._page)
+        self._listview_history_list.set_selection(self._selection)
+        # rotary encoder
+        self._rotary_encoder.set_rotate_irq(items_count=len(self._history_dates), position=self._selection)
 
-    def _state_show_list_loop(self):
+    def loop(self):
         event = self._rotary_encoder.get_event()
-        if event == EncoderEvent.ROTATE:
+        if event == self._rotary_encoder.EVENT_ROTATE:
+            self._listview_history_list.set_selection(self._rotary_encoder.get_position())
+        elif event == self._rotary_encoder.EVENT_PRESS:
+            # save current page and selection for switching back
             self._selection = self._rotary_encoder.get_position()
-            self._list_history_list.set_selection(self._selection)
-        elif event == EncoderEvent.PRESS:
-            self._page = self._list_history_list.get_page()  # save current page for switching back
+            self._page = self._listview_history_list.get_page()
             if self._selection == 0:
+                # back to main menu
+                # set selection and page to 0
+                self._selection = 0
+                self._page = 0
                 self._rotary_encoder.unset_rotate_irq()
                 self._view.remove_all()
-                self._state_machine.set(self._state_machine.main_menu.enter)
+                self._state_machine.set(state_code=self._state_machine.STATE_MENU)
             else:
+                # save selection and page
+                self._selection = self._rotary_encoder.get_position()
+                self._page = self._listview_history_list.get_page()
                 self._rotary_encoder.unset_rotate_irq()
-                self._list_history_list.remove()
-                self._state_machine.set(self._state_show_data_init)
+                self._view.remove(self._listview_history_list)
+                # set state to show data, and pass the data
+                data = load_history_data(self._history_dates[self._selection])
+                show_items = dict2show_items(data, show_datetime=True)
+                self._state_machine.set(state_code=self._state_machine.STATE_SHOW_RESULT,
+                                        args=[show_items])
 
-    def _state_show_data_init(self):
-        # load data
-        self._load_data()
-        # create ui elements
-        self._list_history_list = self._view.add_list(items=self._history_data, y=14, read_only=True)
-        # other
-        self._rotary_encoder.set_rotate_irq(items_count=self._list_history_list.get_max_page() + 1)
-        self._state_machine.set(self._state_show_data_loop)
 
-    def _state_show_data_loop(self):
+class ShowResult(State):
+    def __init__(self, state_machine):
+        super().__init__(state_machine)
+        self._listview_result = None
+
+    def enter(self, args):
+        show_items = args[0]
+        self._listview_result = self._view.add_list(items=show_items, y=14, read_only=True)
+        if self._listview_result.need_scrollbar():
+            self._rotary_encoder.set_rotate_irq(items_count=self._listview_result.get_page_max() + 1, position=0)
+
+    def loop(self):
+        # keep watching rotary encoder press event
         event = self._rotary_encoder.get_event()
-        if event == EncoderEvent.ROTATE:
-            self._list_history_list.set_page(self._rotary_encoder.get_position())
-        elif event == EncoderEvent.PRESS:
-            # back to list, remove listview, unset rotate encoder irq
-            self._list_history_list.remove()
+        if event == self._rotary_encoder.EVENT_ROTATE:
+            self._listview_result.set_page(self._rotary_encoder.get_position())
+        if event == self._rotary_encoder.EVENT_PRESS:
             self._rotary_encoder.unset_rotate_irq()
-            self._state_machine.set(self._state_show_list_init)
+            # from measurement, go to main menu
+            if (self._state_machine.current_module == self._state_machine.MODULE_HRV or
+                    self._state_machine.current_module == self._state_machine.MODULE_KUBIOS):
+                self._state_machine.set(state_code=self._state_machine.STATE_MENU)
+                self._view.remove_all()
+            # from history, go back to history list
+            elif self._state_machine.current_module == self._state_machine.MODULE_HISTORY:
+                self._view.remove(self._listview_result)
+                self._state_machine.set(state_code=self._state_machine.STATE_HISTORY_LIST)
+            else:
+                raise ValueError("Undefined result showing module")

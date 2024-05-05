@@ -15,13 +15,15 @@ Setting next state:
 class State:
     """common resources:
     state_machine, rotary_encoder, heart_sensor, ibi_calculator, view"""
+
     def __init__(self, state_machine):
         self._state_machine = state_machine
-        # self._display = state_machine.display
         self._rotary_encoder = state_machine.rotary_encoder
         self._heart_sensor = state_machine.heart_sensor
         self._ibi_calculator = state_machine.ibi_calculator
         self._view = state_machine.view
+        self._data_network = state_machine.data_network
+        # self._display = state_machine.display
 
     def enter(self, args):
         raise NotImplementedError("This method must be defined and overridden")

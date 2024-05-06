@@ -20,7 +20,6 @@ class State:
         self._state_machine = state_machine
         self._rotary_encoder = state_machine.rotary_encoder
         self._heart_sensor = state_machine.heart_sensor
-        self._ibi_calculator = state_machine.ibi_calculator
         self._view = state_machine.view
         self._data_network = state_machine.data_network
         self._display = state_machine.display

@@ -54,7 +54,7 @@ class HRVAnalysis(State):
         # save data
         result = {"DATE": get_datetime(),
                   "HR": str(hr) + "BPM",
-                  "PPI": str(ppi) + "ms",
+                  "IBI": str(ppi) + "ms",
                   "RMSSD": str(rmssd) + "ms",
                   "SDNN": str(sdnn) + "ms"}
         save_system(result)

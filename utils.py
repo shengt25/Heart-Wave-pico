@@ -75,7 +75,7 @@ def dict2show_items(dict_data, show_datetime=False):
                      "Time:" + str(dict_data["DATE"][9:17])]
     # normal data: in the middle
     list_data.extend(["HR:" + str(dict_data["HR"]),
-                      "PPI:" + str(dict_data["PPI"]),
+                      "IBI:" + str(dict_data["IBI"]),
                       "RMSSD:" + str(dict_data["RMSSD"]),
                       "SDNN:" + str(dict_data["SDNN"])])
     # kubios data: at the end

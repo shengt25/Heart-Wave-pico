@@ -189,7 +189,7 @@ class SettingsDino(State):
 
     def enter(self, args):
         self._view.remove_all()  # clear screen
-        self._view.add_text(text="Dino", y=0, invert=True)
+        self._view.add_text(text="???", y=0, invert=True)
         self._textview_info = self._view.add_text(text="Coming soon", y=14)
 
     def loop(self):

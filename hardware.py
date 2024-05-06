@@ -17,21 +17,17 @@ class HeartSensor:
         self._adc = ADC(Pin(pin))
         self._sampling_rate = sampling_rate
         self._timer = None
-        self._sensor_fifo = Fifo(250 * 5, 'H')
+        self.sensor_fifo = Fifo(100, 'H')
 
     def start(self):
         self._timer = Piotimer(freq=self._sampling_rate, callback=self._sensor_handler)
 
     def stop(self):
         self._timer.deinit()
-        self._sensor_fifo.clear()
+        self.sensor_fifo.clear()
 
     def get_sampling_rate(self):
         return self._sampling_rate
-
-    def get_sensor_fifo(self):
-        """Return the sensor data FIFO object."""
-        return self._sensor_fifo
 
     def read(self):
         """Read the current sensor value directly."""
@@ -42,7 +38,7 @@ class HeartSensor:
         # so the value is shifted right by 2 to get the 14-bit value,
         # to save memory and reduce calculation
         value = self._adc.read_u16() >> 2
-        self._sensor_fifo.put(value)
+        self.sensor_fifo.put(value)
 
 
 class RotaryEncoder:

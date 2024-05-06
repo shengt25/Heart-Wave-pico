@@ -1,9 +1,10 @@
 from utils import print_log
 import time
 from state import State
+from data_processing import SlidingWindow, IBICalculator
 
 
-class WaitMeasure(State):
+class MeasureWait(State):
     """Entry point for any measurement: HR, HRV, Kubios"""
 
     def __init__(self, state_machine):
@@ -39,13 +40,13 @@ class WaitMeasure(State):
             self._view.remove_by_id("text_put_finger2")
             # HR -> HR Measure, HRV
             if self._state_machine.current_module == self._state_machine.MODULE_HR:
-                self._state_machine.set(state_code=self._state_machine.STATE_BASIC_MEASURE)
+                self._state_machine.set(state_code=self._state_machine.STATE_MEASURE)
             # HRV -> HRV Measure
             elif self._state_machine.current_module == self._state_machine.MODULE_HRV:
-                self._state_machine.set(state_code=self._state_machine.STATE_ADVANCE_MEASURE)
+                self._state_machine.set(state_code=self._state_machine.STATE_MEASURE, args=[30])
             # Kubios -> HRV Measure (same state, but module code will distinguish)
             elif self._state_machine.current_module == self._state_machine.MODULE_KUBIOS:
-                self._state_machine.set(state_code=self._state_machine.STATE_ADVANCE_MEASURE)
+                self._state_machine.set(state_code=self._state_machine.STATE_MEASURE, args=[30])
             return
         # handle rotary encoder event: press
         event = self._rotary_encoder.get_event()
@@ -57,43 +58,83 @@ class WaitMeasure(State):
             return
 
 
-class BasicMeasure(State):
+class Measure(State):
     def __init__(self, state_machine):
         super().__init__(state_machine)
+        # data processing
+        self._sliding_window = SlidingWindow(size=int(self._heart_sensor.get_sampling_rate() * 1.5))
+        self._ibi_calculator = IBICalculator(self._heart_sensor.sensor_fifo, self._heart_sensor.get_sampling_rate(),
+                                             self._sliding_window)
+        self._ibi_fifo = self._ibi_calculator.ibi_fifo  # ref of ibi_fifo
         # data
-        self._last_graph_update_time = None
-        self._hr_display_list = []
-        self._ibi_fifo = self._ibi_calculator.get_ibi_fifo()  # ref of ibi_fifo
+        self._hr_show_list = []
+        self._hr = 0
+        self._ibi_list = []
         # placeholders for ui
-        self._textview_hr = []
+        self._textview_hr = None
         self._graphview = None
         # settings
         self._hr_update_interval = 5  # number of sample
+        # timer
+        self._countdown = None
+        self._last_graph_update_time = 0
+        self._last_count_down_time = 0
 
     def enter(self, args):
+        """args: (countdown). countdown: time for counting down, unfilled means unlimited time"""
+        self._countdown = args[0] if args is not None else None
+        self._last_graph_update_time = 0
+        self._last_count_down_time = 0
         # re-init data
-        self._last_graph_update_time = time.ticks_ms()
-        self._hr_display_list.clear()
+        self._hr_show_list.clear()
+        self._hr = 0
+        self._ibi_list.clear()
         self._ibi_calculator.reinit()  # remember to reinit the calculator before use every time
         # ui
-        # assigned to self.xxx, avoid select_by_id in loop()
-        self._textview_hr = self._view.select_by_id("text_hr")
+        self._textview_hr = self._view.select_by_id("text_hr")  # assigned to self.xxx, avoid select_by_id in loop()
         self._graphview = self._view.add_graph(y=14, h=64 - 14 - 12)
         self._heart_sensor.start()  # start lastly to reduce the chance of data piling, maybe not needed
 
     def loop(self):
         self._ibi_calculator.run()  # keep calling calculator: sensor_fifo -> ibi_fifo
         # monitor and get data from ibi fifo, calculate hr and put into list
-        if self._ibi_fifo.has_data():
+        while self._ibi_fifo.has_data():
             ibi = self._ibi_fifo.get()
-            self._hr_display_list.append(int(60000 / ibi))
+            self._hr_show_list.append(int(60000 / ibi))
+            if self._countdown is not None:  # countdown mode
+                self._ibi_list.append(ibi)
 
         # for every _hr_update_interval samples, calculate the median value and update the HR display
-        if len(self._hr_display_list) >= self._hr_update_interval:
-            median_hr = sorted(self._hr_display_list)[len(self._hr_display_list) // 2]
+        if len(self._hr_show_list) >= self._hr_update_interval:
+            self._hr = sorted(self._hr_show_list)[len(self._hr_show_list) // 2]
             # use set_text method to update the text, view (screen) will auto refresh
-            self._textview_hr.set_text(str(median_hr) + " BPM")
-            self._hr_display_list.clear()
+            if self._countdown is not None:  # countdown mode
+                hr_text = str(self._hr) + " BPM  " + str(self._countdown) + "s"
+            else:
+                hr_text = str(self._hr) + " BPM"
+
+            self._textview_hr.set_text(hr_text)
+            self._hr_show_list.clear()
+
+        # countdown mode
+        if self._countdown is not None:
+            if self._last_count_down_time == 0 and len(self._ibi_list) > 2:
+                self._last_count_down_time = time.ticks_ms()
+
+            if self._last_count_down_time != 0 and time.ticks_diff(time.ticks_ms(), self._last_count_down_time) >= 1000:
+                self._countdown -= 1
+                self._last_count_down_time = time.ticks_ms()
+                if self._hr == 0:
+                    self._textview_hr.set_text("-- BPM  " + str(self._countdown) + "s")
+                else:
+                    self._textview_hr.set_text(str(self._hr) + " BPM  " + str(self._countdown) + "s")
+            if self._countdown <= 0:
+                self._heart_sensor.stop()
+                self._view.remove(self._graphview)
+                self._view.remove(self._textview_hr)
+                self._state_machine.set(state_code=self._state_machine.STATE_MEASURE_RESULT_CHECK,
+                                        args=[self._ibi_list])
+                return
 
         # update graph, reads value from sensor directly. no need to use sensor_fifo
         # maximum update interval 40ms, to save the CPU time

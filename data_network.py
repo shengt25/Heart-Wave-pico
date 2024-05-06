@@ -50,7 +50,7 @@ class DataNetwork:
         return True
 
     def get_kubios_analysis(self, ibi_list):
-        """Return: success, response"""
+        """Return: tuple(success, response)"""
         try:
             APIKEY = GlobalSettings.kubios_apikey
             CLIENT_ID = GlobalSettings.kubios_client_id

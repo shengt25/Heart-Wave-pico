@@ -1,5 +1,5 @@
 import array
-from icon import icon_hr, icon_hrv, icon_kubios, icon_history
+from icon import icon_hr, icon_hrv, icon_kubios, icon_history, icon_settings
 import framebuf
 from utils import print_log
 import os
@@ -19,8 +19,8 @@ class View:
     def add_list(self, items, y, spacing=2, max_text_length=16, read_only=False, vid=None):
         return self._add_view(ListView, vid, items, y, spacing, max_text_length, read_only)
 
-    def add_graph(self, y, h, x=0, w=128, speed=1, show_box=False, vid=None):
-        return self._add_view(GraphView, vid, y, h, x, w, speed, show_box)
+    def add_graph(self, y, h, speed=1, vid=None):
+        return self._add_view(GraphView, vid, y, h, speed)
 
     def add_menu(self, vid=None):
         return self._add_view(MenuView, vid)
@@ -62,6 +62,9 @@ class View:
         if vid not in self._active_views.keys():
             raise ValueError("View not found")
         return self._active_views[vid]
+
+    def get_stat(self):
+        return self._active_views, self._inactive_views
 
     def _add_view(self, constructor, vid: str, *args, **kwargs):
         self._vid_checker(vid)
@@ -289,146 +292,72 @@ class ListView:
         self._display.set_update()
 
 
-# todo a simplified graph view, because in this project there is no need for a complex one including outline box or x-coordinate, width change, etc.
-# class GraphViewNew:
-#     def __init__(self, display, y, h, speed=1):
-#         self._display = display
-#         self.WIDTH = display.width
-#         self.HEIGHT = display.height
-#         self._mean = 8192
-#         self.active = True
-#
-#         self._box_y = y
-#         self._box_h = h
-#         self._show_box = show_box
-#         self._speed = speed
-#
-#         self._x = 0
-#         self._y = 0
-#         self._last_x = -1
-#         self._last_y = -1
-
-
 class GraphView:
     type = "graph"
 
-    def __init__(self, display, y, h, x=0, w=128, speed=1, show_box=False):
-        # init
+    def __init__(self, display, y, h, speed=1):
         self._display = display
-        self._range_h_default = 16384
-        self._range_l_default = 0
-        self._range_update_period = 20
+        self._WIDTH = display.width
+        self._HEIGHT = display.height
         self.active = True
 
-        # attributes
-        self._box_x = x
-        self._box_y = y
-        self._box_w = w
-        self._box_h = h
-        self._show_box = show_box
-        self._speed = speed
-
-        self._x = self._box_x + 1
-        self._range_h = self._range_h_default
-        self._range_l = self._range_l_default
-        self._range_h_temp = self._range_h_default
-        self._range_l_temp = self._range_l_default
         self._last_x = -1
         self._last_y = -1
+        self._x = 0
+        self._box_y = y
+        self._box_h = h
+        self._speed = speed
 
-    def set_value(self, value):
+    def reinit(self, y, h, speed=1):
+        self.active = True
+        self._last_x = -1
+        self._last_y = -1
+        self._x = 0
+        self._box_y = y
+        self._box_h = h
+        self._speed = speed
+
+    def set_value(self, value, min_val, max_val):
         if not self.active:
             raise ValueError("Trying to set an inactive view component")
-        self._update_framebuffer(value)
-
-    def reinit(self, y, h, x=0, w=128, speed=1, show_box=False):
-        self.active = True
-        self._box_x = x
-        self._box_y = y
-        self._box_w = w
-        self._box_h = h
-        self._show_box = show_box
-        self._speed = speed
-
-        self._x = self._box_x + 1
-        self._range_h = self._range_h_default
-        self._range_l = self._range_l_default
-        self._range_h_temp = self._range_h_default
-        self._range_l_temp = self._range_l_default
-        self._last_x = -1
-        self._last_y = -1
+        self._update_framebuffer(value, min_val, max_val)
 
     def clear(self):
-        self._display.fill_rect(self._box_x, self._box_y, self._box_w, self._box_h, 0)
+        self._display.fill_rect(0, self._box_y, self._WIDTH, self._box_h, 0)
         self._display.set_update()
 
     def _clear_ahead(self):
         # if: within the box's width
         # else: exceed the box's width: clean the part inside box, take the rest at the start and clean it
-        clean_width = int(self._box_w / 4)
-        if self._x + clean_width < self._box_x + self._box_w:
-            self._display.fill_rect(self._x + 1, self._box_y + 1, clean_width - 2, self._box_h - 2, 0)
+        clean_width = int(self._WIDTH / 4)
+        if self._x + clean_width < self._WIDTH:
+            self._display.fill_rect(self._x + 1, self._box_y, clean_width, self._box_h, 0)
         else:
-            exceed_width = self._x + clean_width - self._box_w - self._box_x
-            self._display.fill_rect(self._x + 1, self._box_y + 1, clean_width - exceed_width - 2,
-                                    self._box_h - 2, 0)
-            self._display.fill_rect(self._box_x + 1, self._box_y + 1, exceed_width - 2, self._box_h - 2, 0)
+            exceed_width = self._x + clean_width - self._WIDTH
+            self._display.fill_rect(self._x + 1, self._box_y, clean_width - exceed_width, self._box_h, 0)
+            self._display.fill_rect(0, self._box_y, exceed_width, self._box_h, 0)
 
-    def _normalize(self, value):
-        # use default when range is negative or zero
-        if self._range_h <= self._range_l:
-            return int((value - self._range_l) * self._box_h / (self._range_h_default - self._range_l_default))
-        else:
-            return int((value - self._range_l) * self._box_h / (self._range_h - self._range_l))
-
-    def _convert_coord(self, value):
-        new_value = - value + self._box_h + self._box_y
-        return new_value
-
-    def _draw_outline_box(self):
-        self._display.rect(self._box_x, self._box_y, self._box_w, self._box_h, 1)
-
-    def _update_framebuffer(self, value):
-        # loop x inside the box
-        if self._box_x + 1 < self._x + self._speed < self._box_x + self._box_w - 1:
-            self._x += self._speed
-        else:
-            # bring x to the start and reset last point
-            self._x = self._box_x + 1
-            self._last_x = -1
-            self._last_y = -1
-
-        # update range
-        if self._x % self._range_update_period == 0:
-            self._range_h = self._range_h_temp
-            self._range_l = self._range_l_temp
-            # reset the temp range
-            self._range_h_temp = self._range_l_default
-            self._range_l_temp = self._range_h_default
-
-        # shirk the range
-        if self._range_h_temp < value:
-            self._range_h_temp = value
-        if self._range_l_temp > value:
-            self._range_l_temp = value
-
+    def _update_framebuffer(self, value, min_val, max_val):
         self._clear_ahead()
-        normalized_value = self._normalize(value)
-        y = self._convert_coord(normalized_value)
 
-        # limit y inside the box
-        if y > self._box_y + self._box_h - 2:
-            y = self._box_y + self._box_h - 2
+        if max_val - min_val == 0:
+            y = self._box_y + self._box_h // 2
+        else:
+            y = int((max_val - value) / (max_val - min_val) * self._box_h + self._box_y)
+
+        if y >= self._box_y + self._box_h:
+            y = self._box_y + self._box_h - 1
         elif y <= self._box_y:
             y = self._box_y + 1
 
-        # draw, ignore drawing with invalid last point
+        self._x = (self._x + self._speed) % self._WIDTH
+        if self._x == 0:
+            self._last_x = -1
+            self._last_y = -1
+
         if self._last_x != -1 and self._last_y != -1:
             self._display.line(self._last_x, self._last_y, self._x, y, 1)
-        if self._show_box:
-            self._draw_outline_box()
 
-        # update last point
         self._last_x = self._x
         self._last_y = y
 
@@ -442,6 +371,7 @@ class MenuView:
     _icon_buf_hrv = framebuf.FrameBuffer(icon_hrv, 32, 32, framebuf.MONO_VLSB)
     _icon_buf_kubios = framebuf.FrameBuffer(icon_kubios, 32, 32, framebuf.MONO_VLSB)
     _icon_buf_history = framebuf.FrameBuffer(icon_history, 32, 32, framebuf.MONO_VLSB)
+    _icon_buf_settings = framebuf.FrameBuffer(icon_settings, 32, 32, framebuf.MONO_VLSB)
 
     def __init__(self, display):
         self._display = display
@@ -472,6 +402,9 @@ class MenuView:
         elif selection == 3:
             icon_buf = self._icon_buf_history
             text = "History"
+        elif selection == 4:
+            icon_buf = self._icon_buf_settings
+            text = "Settings"
         else:
             raise ValueError("Invalid index")
 
@@ -479,7 +412,7 @@ class MenuView:
         self._display.text(text, int((128 - len(text) * 8) / 2), 38, 1)
         self._display.blit(icon_buf, int((128 - 32) / 2), 0)
         # draw selection indicator
-        for x in range(4):
-            self._display.rect(42 + 12 * x, 61, 2, 2, 1)
-        self._display.fill_rect(42 + 12 * selection, 60, 4, 4, 1)
+        for x in range(5):
+            self._display.rect(36 + 12 * x, 61, 2, 2, 1)
+        self._display.fill_rect(36 + 12 * selection, 60, 4, 4, 1)
         self._display.set_update()

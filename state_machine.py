@@ -3,10 +3,11 @@ from data_processing import IBICalculator
 from view import View
 from data_network import DataNetwork
 from main_menu import MainMenu
-from hr import WaitMeasure, BasicMeasure
-from hrv import AdvanceMeasure, AdvanceMeasureCheck, HRVAnalysis
-from kubios import KubiosSend, KubiosAnalysis
+from hr import MeasureWait, Measure
+from hrv import MeasureResultCheck, HRVAnalysis
+from kubios import KubiosAnalysis
 from history import HistoryList, ShowResult
+from settings import Settings, SettingsDebugInfo, SettingsWifi, SettingsMqtt, SettingsAbout, SettingsDino
 
 
 class StateMachine:
@@ -19,38 +20,41 @@ class StateMachine:
     MODULE_SETTINGS = 5
 
     STATE_MENU = 6
-    STATE_WAIT_MEASURE = 7
-    STATE_BASIC_MEASURE = 8
-    STATE_ADVANCE_MEASURE = 9
-    STATE_ADVANCE_MEASURE_CHECK = 10
-    STATE_HRV_ANALYSIS = 11
-    STATE_KUBIOS_ANALYSIS = 12
-    STATE_KUBIOS_SEND = 13
-    STATE_HISTORY_LIST = 15
-    STATE_SHOW_RESULT = 16
-    STATE_SETTINGS = 17
-    STATE_SETTINGS_INFO = 18
-    STATE_SETTINGS_WIFI = 19
-    STATE_SETTINGS_MQTT = 20
-    STATE_SETTINGS_ABOUT = 21
+    STATE_MEASURE_WAIT = 7
+    STATE_MEASURE = 8
+    STATE_MEASURE_RESULT_CHECK = 9
+    STATE_HRV_ANALYSIS = 10
+    STATE_KUBIOS_ANALYSIS = 11
+    STATE_HISTORY_LIST = 12
+    STATE_SHOW_RESULT = 13
+    STATE_SETTINGS = 14
+    STATE_SETTINGS_DEBUG_INFO = 15
+    STATE_SETTINGS_WIFI = 16
+    STATE_SETTINGS_MQTT = 17
+    STATE_SETTINGS_ABOUT = 18
+    STATE_SETTINGS_DINO = 19
 
     # map the state code to each class
     state_dict = {STATE_MENU: MainMenu,
-                  STATE_WAIT_MEASURE: WaitMeasure,
-                  STATE_BASIC_MEASURE: BasicMeasure,
-                  STATE_ADVANCE_MEASURE: AdvanceMeasure,
-                  STATE_ADVANCE_MEASURE_CHECK: AdvanceMeasureCheck,
+                  STATE_MEASURE_WAIT: MeasureWait,
+                  STATE_MEASURE: Measure,
+                  STATE_MEASURE_RESULT_CHECK: MeasureResultCheck,
                   STATE_HRV_ANALYSIS: HRVAnalysis,
                   STATE_KUBIOS_ANALYSIS: KubiosAnalysis,
-                  STATE_KUBIOS_SEND: KubiosSend,
                   STATE_HISTORY_LIST: HistoryList,
-                  STATE_SHOW_RESULT: ShowResult}
+                  STATE_SHOW_RESULT: ShowResult,
+                  STATE_SETTINGS: Settings,
+                  STATE_SETTINGS_DEBUG_INFO: SettingsDebugInfo,
+                  STATE_SETTINGS_WIFI: SettingsWifi,
+                  STATE_SETTINGS_MQTT: SettingsMqtt,
+                  STATE_SETTINGS_ABOUT: SettingsAbout,
+                  STATE_SETTINGS_DINO: SettingsDino
+                  }
 
     def __init__(self):
         self.display = Display(refresh_rate=40)
         self.rotary_encoder = RotaryEncoder(btn_debounce_ms=50)
         self.heart_sensor = HeartSensor(pin=26, sampling_rate=250)
-        self.ibi_calculator = IBICalculator(self.heart_sensor.get_sensor_fifo(), self.heart_sensor.get_sampling_rate())
         self.view = View(self.display)
         self.data_network = DataNetwork()
         self.current_module = self.MODULE_MENU
@@ -93,3 +97,6 @@ class StateMachine:
         """The module is used to determine the next state accordingly,
         it's set up only by the main menu"""
         self.current_module = module
+
+    def get_states_info(self):
+        return self._states

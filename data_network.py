@@ -23,7 +23,7 @@ class DataNetwork:
         return True
 
     def mqtt_publish(self, result):
-        measurement = {"mean_hr": result["HR"], "mean_ppi": result["PPI"],
+        measurement = {"mean_hr": result["HR"], "mean_ppi": result["IBI"],
                        "rmssd": result["RMSSD"], "sdnn": result["SDNN"]}
         topic = "hwp/measurement"
         message = json.dumps(measurement)
@@ -50,7 +50,7 @@ class DataNetwork:
         return True
 
     def get_kubios_analysis(self, ibi_list):
-        """Return: success, response"""
+        """Return: tuple(success, response)"""
         try:
             APIKEY = GlobalSettings.kubios_apikey
             CLIENT_ID = GlobalSettings.kubios_client_id
@@ -68,7 +68,7 @@ class DataNetwork:
             analysis = response.json()["analysis"]
             result = {"DATE": get_datetime(),
                       "HR": str(round(analysis["mean_hr_bpm"], 2)) + "BPM",
-                      "PPI": str(round(analysis["mean_rr_ms"], 2)) + "ms",
+                      "IBI": str(round(analysis["mean_rr_ms"], 2)) + "ms",
                       "RMSSD": str(round(analysis["rmssd_ms"], 2)) + "ms",
                       "SDNN": str(round(analysis["sdnn_ms"], 2)) + "ms",
                       "SNS": str(round(analysis["sns_index"], 2)),

@@ -27,13 +27,13 @@ class MainMenu(State):
         elif event == self._rotary_encoder.EVENT_PRESS:
             if self._selection == 0:
                 self._state_machine.set_module(self._state_machine.MODULE_HR)
-                self._state_machine.set(self._state_machine.STATE_WAIT_MEASURE)
+                self._state_machine.set(self._state_machine.STATE_MEASURE_WAIT)
             elif self._selection == 1:
                 self._state_machine.set_module(self._state_machine.MODULE_HRV)
-                self._state_machine.set(self._state_machine.STATE_WAIT_MEASURE)
+                self._state_machine.set(self._state_machine.STATE_MEASURE_WAIT)
             elif self._selection == 2:
                 self._state_machine.set_module(self._state_machine.MODULE_KUBIOS)
-                self._state_machine.set(self._state_machine.STATE_WAIT_MEASURE)
+                self._state_machine.set(self._state_machine.STATE_MEASURE_WAIT)
             elif self._selection == 3:
                 self._state_machine.set_module(self._state_machine.MODULE_HISTORY)
                 self._state_machine.set(self._state_machine.STATE_HISTORY_LIST)

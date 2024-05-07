@@ -36,7 +36,7 @@ class MainMenu(State):
                 self._state_machine.set(self._state_machine.STATE_MEASURE_WAIT)
             elif self._selection == 3:
                 self._state_machine.set_module(self._state_machine.MODULE_HISTORY)
-                self._state_machine.set(self._state_machine.STATE_HISTORY_LIST)
+                self._state_machine.set(self._state_machine.STATE_SHOW_HISTORY)
             elif self._selection == 4:
                 self._state_machine.set_module(self._state_machine.MODULE_SETTINGS)
                 self._state_machine.set(self._state_machine.STATE_SETTINGS)

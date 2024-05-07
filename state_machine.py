@@ -2,10 +2,9 @@ from hardware import Display, RotaryEncoder, HeartSensor
 from view import View
 from pico_network import DataNetwork
 from main_menu import MainMenu
-from hr import MeasureWait, Measure
-from hrv import MeasureResultCheck, HRVAnalysis
-from kubios import KubiosAnalysis
-from history import HistoryList, ShowResult
+from measure import MeasureWait, Measure
+from measure_analysis import MeasureResultCheck, HRVAnalysis, KubiosAnalysis
+from result import ShowHistory, ShowResult
 from settings import Settings, SettingsDebugInfo, SettingsWifi, SettingsMqtt, SettingsAbout, SettingsDino
 
 
@@ -24,7 +23,7 @@ class StateMachine:
     STATE_MEASURE_RESULT_CHECK = 9
     STATE_HRV_ANALYSIS = 10
     STATE_KUBIOS_ANALYSIS = 11
-    STATE_HISTORY_LIST = 12
+    STATE_SHOW_HISTORY = 12
     STATE_SHOW_RESULT = 13
     STATE_SETTINGS = 14
     STATE_SETTINGS_DEBUG_INFO = 15
@@ -40,7 +39,7 @@ class StateMachine:
                   STATE_MEASURE_RESULT_CHECK: MeasureResultCheck,
                   STATE_HRV_ANALYSIS: HRVAnalysis,
                   STATE_KUBIOS_ANALYSIS: KubiosAnalysis,
-                  STATE_HISTORY_LIST: HistoryList,
+                  STATE_SHOW_HISTORY: ShowHistory,
                   STATE_SHOW_RESULT: ShowResult,
                   STATE_SETTINGS: Settings,
                   STATE_SETTINGS_DEBUG_INFO: SettingsDebugInfo,

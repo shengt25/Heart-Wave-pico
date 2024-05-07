@@ -1,12 +1,10 @@
 from utils import print_log
-import os
 from utils import GlobalSettings, dict2show_items
-import json
 from state import State
 from save_system import load_history_list, load_history_data
 
 
-class HistoryList(State):
+class ShowHistory(State):
     def __init__(self, state_machine):
         super().__init__(state_machine)
         self._selection = 0  # to preserve selected index, resume when exit and re-enter
@@ -84,6 +82,6 @@ class ShowResult(State):
             # from history, go back to history list
             elif self._state_machine.current_module == self._state_machine.MODULE_HISTORY:
                 self._view.remove(self._listview_result)
-                self._state_machine.set(state_code=self._state_machine.STATE_HISTORY_LIST)
+                self._state_machine.set(state_code=self._state_machine.STATE_SHOW_HISTORY)
             else:
                 raise ValueError("Undefined result showing module")

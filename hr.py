@@ -1,8 +1,8 @@
 from utils import print_log
 import time
 from state import State
-from data_processing import SlidingWindow, IBICalculator
-
+from data_processing import IBICalculator
+from data_structure import SlidingWindow
 
 class MeasureWait(State):
     """Entry point for any measurement: HR, HRV, Kubios"""

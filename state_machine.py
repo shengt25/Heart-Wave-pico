@@ -1,7 +1,6 @@
 from hardware import Display, RotaryEncoder, HeartSensor
-from data_processing import IBICalculator
 from view import View
-from data_network import DataNetwork
+from pico_network import DataNetwork
 from main_menu import MainMenu
 from hr import MeasureWait, Measure
 from hrv import MeasureResultCheck, HRVAnalysis

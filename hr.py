@@ -75,6 +75,7 @@ class Measure(State):
         self._graphview = None
         # settings
         self._hr_update_interval = 5  # number of sample
+        self._graph_update_interval = int(60000 / 180 / 10)  # 60000/max_hr/min_pixel_distance
         # timer
         self._countdown = None
         self._last_graph_update_time = 0
@@ -136,12 +137,14 @@ class Measure(State):
                                         args=[self._ibi_list])
                 return
 
-        # update graph, reads value from sensor directly. no need to use sensor_fifo
-        # maximum update interval 40ms, to save the CPU time
-        if time.ticks_diff(time.ticks_ms(), self._last_graph_update_time) > 40:
+        # maximum update interval 20ms, and skip when fifo piling
+        if (time.ticks_diff(time.ticks_ms(), self._last_graph_update_time) > self._graph_update_interval and
+                self._heart_sensor.sensor_fifo.count() < 10):
             self._last_graph_update_time = time.ticks_ms()
             value = self._heart_sensor.read()
-            self._graphview.set_value(value)
+            min_val = self._sliding_window.get_min() if self._sliding_window.get_min() is not None else 0
+            max_val = self._sliding_window.get_max() if self._sliding_window.get_max() is not None else 0
+            self._graphview.set_value(value, min_val, max_val)
 
         # keep watching rotary encoder press event
         event = self._rotary_encoder.get_event()

@@ -1,5 +1,5 @@
 import array
-from icon import icon_hr, icon_hrv, icon_kubios, icon_history, icon_settings
+from resources.icon import icon_hr, icon_hrv, icon_kubios, icon_history, icon_settings
 import framebuf
 from utils import print_log
 import os
@@ -13,8 +13,8 @@ class View:
         self._active_views = {}
         self._inactive_views = {}  # a separate dict with type as key for quicker search
 
-    def add_text(self, text, y, invert=False, vid=None):
-        return self._add_view(TextView, vid, text, y, invert)
+    def add_text(self, text, x, y, invert=False, invert_mode=1, vid=None):
+        return self._add_view(TextView, vid, text, x, y, invert, invert_mode)
 
     def add_list(self, items, y, spacing=2, max_text_length=16, read_only=False, vid=None):
         return self._add_view(ListView, vid, items, y, spacing, max_text_length, read_only)
@@ -97,17 +97,22 @@ class View:
 
 
 class TextView:
-    """Text elements: set_text"""
+    """Text elements: set_text
+    when set invert,
+    invert_mode=1: invert background from the start of text to the end of the line, useful for heading text.
+    invert_mode=2: invert background within text only,"""
     type = "text"
 
-    def __init__(self, display, text, y, invert=False):
+    def __init__(self, display, text, x, y, invert=False, invert_mode=1):
         self._display = display
         self._font_height = display.FONT_HEIGHT
         self.active = True
         # param
         self._text = text
+        self._x = x
         self._y = y
         self._invert = invert
+        self._invert_mode = invert_mode
         self._update_framebuffer()
 
     def set_text(self, text):
@@ -117,26 +122,38 @@ class TextView:
         self._text = text
         self._update_framebuffer()
 
-    def reinit(self, text, y, invert=False):
+    def reinit(self, text, x, y, invert=False, invert_mode=1):
         self.active = True
         self._text = text
+        self._x = x
         self._y = y
         self._invert = invert
+        self._invert_mode = invert_mode
         self._update_framebuffer()
 
     def clear(self):
         if self._invert:
-            self._display.fill_rect(0, self._y, self._display.width, self._font_height + 2, 0)
+            if self._invert_mode == 1:
+                self._display.fill_rect(self._x, self._y, self._display.width - self._x, self._font_height + 2, 0)
+            elif self._invert_mode == 2:
+                self._display.fill_rect(self._x, self._y, self._font_height * len(self._text), self._font_height + 2, 0)
+            else:
+                raise ValueError("Invalid invert mode")
         else:
-            self._display.fill_rect(0, self._y, self._display.width, self._font_height, 0)
+            self._display.fill_rect(self._x, self._y, self._font_height * len(self._text), self._font_height, 0)
         self._display.set_update()
 
     def _update_framebuffer(self):
         if self._invert:
-            self._display.fill_rect(0, self._y, self._display.width, self._font_height + 2, 1)
-            self._display.text(self._text, 0, self._y + 1, 0)
+            if self._invert_mode == 1:
+                self._display.fill_rect(self._x, self._y, self._display.width - self._x, self._font_height + 2, 1)
+            elif self._invert_mode == 2:
+                self._display.fill_rect(self._x, self._y, self._font_height * len(self._text), self._font_height + 2, 1)
+            else:
+                raise ValueError("Invalid invert mode")
+            self._display.text(self._text, self._x, self._y + 1, 0)
         else:
-            self._display.text(self._text, 0, self._y, 1)
+            self._display.text(self._text, self._x, self._y, 1)
         self._display.set_update()
 
 

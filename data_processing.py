@@ -4,7 +4,6 @@ import urequests as requests
 from data_structure import Fifo
 
 
-
 class IBICalculator:
     def __init__(self, sensor_fifo, sampling_rate, sliding_window, min_hr=40, max_hr=180):
         # data store and output
@@ -143,7 +142,7 @@ def calculate_hrv(IBI_list):
     return round(average_HR, 2), round(PPI, 2), round(RMSSD, 2), round(SDNN, 2)
 
 
-def get_kubios_analysis(self, ibi_list):
+def get_kubios_analysis(ibi_list):
     """Return: tuple(success, response)"""
     try:
         APIKEY = GlobalSettings.kubios_apikey

@@ -120,10 +120,10 @@ class SlidingWindow:
         self.sum += value
 
     def get_max(self):
-        return self.deque_max.peek_left() if self.deque_max else None
+        return self.deque_max.peek_left() if self.deque_max.has_data() else None
 
     def get_min(self):
-        return self.deque_min.peek_left() if self.deque_min else None
+        return self.deque_min.peek_left() if self.deque_min.has_data() else None
 
     def get_average(self):
         return self.sum / self.current_window.count if self.current_window.count > 0 else None

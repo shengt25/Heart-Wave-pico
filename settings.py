@@ -85,7 +85,7 @@ class SettingsDebugInfo(State):
             wlan_ip = "IP: N/A"
         if self._data_network.is_mqtt_connected():
             mqtt_connected = "Connected"
-            mqtt_broker_ip = self._data_network.get_mqtt_broker_ip()
+            mqtt_broker_ip = self._data_network.get_broker_ip()
         else:
             mqtt_connected = "Not connected"
             mqtt_broker_ip = "IP: N/A"

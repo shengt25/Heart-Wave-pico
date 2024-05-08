@@ -39,6 +39,7 @@ def save_system(data):
 def load_history_list():
     directory = GlobalSettings.save_directory + "/"
     files = os.listdir(directory)
+    files.sort(reverse=True)  # newest first
     return files
 
 

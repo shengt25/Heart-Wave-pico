@@ -2043,5 +2043,5 @@ class PowerOnPico:
 
     def free(self):
         for i in range(len(self.seq)):
-            self.seq[i] = None
-        self.seq = None
+            del self.seq[0]
+        del self.seq

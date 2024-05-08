@@ -346,7 +346,7 @@ class GraphView:
     def _clear_ahead(self):
         # if: within the box's width
         # else: exceed the box's width: clean the part inside box, take the rest at the start and clean it
-        clean_width = int(self._WIDTH / 4)
+        clean_width = int(self._WIDTH / 7)
         if self._x + clean_width < self._WIDTH:
             self._display.fill_rect(self._x + 1, self._box_y, clean_width, self._box_h, 0)
         else:

@@ -1,5 +1,6 @@
 import time
-from utils import print_log, get_datetime, dict2show_items
+from utils import print_log, get_datetime
+from result import dict2show_items
 from save_system import save_system
 from state import State
 from data_processing import calculate_hrv, get_kubios_analysis
@@ -44,6 +45,7 @@ class MeasureResultCheck(State):
                 raise ValueError("Invalid module code")
             return
         else:
+            self._display.fill_rect(0, 14, 128, 50, 0)  # clear animation in MeasureResultCheck. ugly but works for now
             self._view.add_text(text="Not enough data", x=0, y=14, vid="text_check_error")
             self._listview_retry = self._view.add_list(items=["Try again", "Exit"], y=34)
             self._rotary_encoder.set_rotate_irq(items_count=2, position=0)
@@ -67,7 +69,6 @@ class MeasureResultCheck(State):
 class HRVAnalysis(State):
     def __init__(self, state_machine):
         super().__init__(state_machine)
-        self._listview_retry = None
 
     def enter(self, args):
         ibi_list = args[0]
@@ -84,6 +85,7 @@ class HRVAnalysis(State):
         mqtt_success = self._state_machine.data_network.mqtt_publish(result)
         if not mqtt_success:
             show_items.extend(["---", "MQTT failed", "Check settings"])
+        self._display.fill_rect(0, 14, 128, 50, 0)  # clear animation in MeasureResultCheck. ugly but works for now
         self._state_machine.set(state_code=self._state_machine.STATE_SHOW_RESULT, args=[show_items])
 
     def loop(self):
@@ -98,11 +100,9 @@ class KubiosAnalysis(State):
 
     def enter(self, args):
         self._ibi_list = args[0]
-        print_log("Sending data...")
         self._rotary_encoder.unset_button_irq()  # just in case user press button a lot while sending
         kubios_success, result = get_kubios_analysis(self._ibi_list)
         self._rotary_encoder.set_button_irq()  # resume after process done
-        print_log("Result received")
         if kubios_success:
             # success, save and goto show result
             save_system(result)
@@ -116,6 +116,7 @@ class KubiosAnalysis(State):
         else:
             # failed, retry or show HRV result
             self._rotary_encoder.set_rotate_irq(items_count=2, position=0)
+            self._display.fill_rect(0, 14, 128, 50, 0)  # clear animation in MeasureResultCheck. ugly but works for now
             self._view.add_text(text="Failed sending", x=0, y=14, vid="text_kubios_failed")
             self._listview_retry = self._view.add_list(items=["Try again", "Show HRV result"], y=34)
 

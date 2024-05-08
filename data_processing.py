@@ -2,6 +2,7 @@ from utils import print_log, get_datetime, GlobalSettings
 from math import sqrt
 import urequests as requests
 from data_structure import Fifo
+import gc
 
 
 class IBICalculator:
@@ -101,7 +102,21 @@ class IBICalculator:
                 return
 
 
-def calculate_hrv(IBI_list):
+def calculate_hrv(IBI_list_raw):
+    # filter out the outlier by removing the IBI that is 30% lower or higher than the mean ibi, with a minimum of 300ms
+    IBI_list = []
+    mean_ibi = 0
+    for ibi in IBI_list_raw:
+        mean_ibi += ibi
+    mean_ibi /= len(IBI_list_raw)
+    threshold_lower = mean_ibi * 0.7
+    if threshold_lower < 300:
+        threshold_lower = 300
+    threshold_higher = mean_ibi * 1.3
+    for i in range(len(IBI_list_raw)):
+        if threshold_lower < IBI_list_raw[i] < threshold_higher:
+            IBI_list.append(IBI_list_raw[i])
+
     # HR
     average_HR = 0
     for HR in IBI_list:
@@ -109,15 +124,22 @@ def calculate_hrv(IBI_list):
     average_HR /= len(IBI_list)
     average_HR = 60000 / average_HR
 
+    # this is calculating the max-min difference of the IBI list, which is not PPI
+    # # PPI
+    # minimum = 9999999
+    # maximum = 0
+    # for beat in IBI_list:
+    #     if beat > maximum:
+    #         maximum = beat
+    #     if beat < minimum:
+    #         minimum = beat
+    # PPI = maximum - minimum
+
     # PPI
-    minimum = 9999999
-    maximum = 0
-    for beat in IBI_list:
-        if beat > maximum:
-            maximum = beat
-        if beat < minimum:
-            minimum = beat
-    PPI = maximum - minimum
+    mean_ibi = 0
+    for ibi in IBI_list:
+        mean_ibi += ibi
+    mean_ibi /= len(IBI_list)
 
     # RMSSD
     average = 0
@@ -127,6 +149,7 @@ def calculate_hrv(IBI_list):
     average /= len(IBI_list) - 1
     RMSSD = sqrt(average)
 
+    # SDNN
     mean_val = 0
     for i in IBI_list:
         mean_val += i
@@ -139,26 +162,33 @@ def calculate_hrv(IBI_list):
     SDNN = variance
 
     # I could've probably done this all in one go but I decided not to give anybody who will read this nightmares.
-    return round(average_HR, 2), round(PPI, 2), round(RMSSD, 2), round(SDNN, 2)
+    return round(average_HR, 2), round(mean_ibi, 2), round(RMSSD, 2), round(SDNN, 2)
 
 
 def get_kubios_analysis(ibi_list):
     """Return: tuple(success, response)"""
+    # run gc.collect() to free up memory, otherwise the request might fail due to it probably using a lot of memory
     try:
         APIKEY = GlobalSettings.kubios_apikey
         CLIENT_ID = GlobalSettings.kubios_client_id
         CLIENT_SECRET = GlobalSettings.kubios_client_secret
         TOKEN_URL = "https://kubioscloud.auth.eu-west-1.amazoncognito.com/oauth2/token"
+        gc.collect()
         response = requests.post(url=TOKEN_URL, data='grant_type=client_credentials&client_id={}'.format(CLIENT_ID),
                                  headers={'Content-Type': 'application/x-www-form-urlencoded'},
                                  auth=(CLIENT_ID, CLIENT_SECRET))
+
         response = response.json()  # Parse JSON response into a python dictionary
         access_token = response["access_token"]  # Parse access token
         dataset = {"type": "RRI", "data": ibi_list, "analysis": {"type": "readiness"}}
+        gc.collect()
         response = requests.post(url="https://analysis.kubioscloud.com/v2/analytics/analyze",
                                  headers={"Authorization": "Bearer {}".format(access_token), "X-Api-Key": APIKEY},
                                  json=dataset)
         analysis = response.json()["analysis"]
+
+        # compare with local calculation when done kubios, for testing purpose
+        hr, ppi, rmssd, sdnn = calculate_hrv(ibi_list)
         result = {"DATE": get_datetime(),
                   "HR": str(round(analysis["mean_hr_bpm"], 2)) + "BPM",
                   "IBI": str(round(analysis["mean_rr_ms"], 2)) + "ms",
@@ -166,7 +196,11 @@ def get_kubios_analysis(ibi_list):
                   "SDNN": str(round(analysis["sdnn_ms"], 2)) + "ms",
                   "SNS": str(round(analysis["sns_index"], 2)),
                   "PNS": str(round(analysis["pns_index"], 2)),
-                  "STRESS": str(round(analysis["stress_index"], 2))}
+                  "STRESS": str(round(analysis["stress_index"], 2)),
+                  "HR_LOCAL": hr,  # compare with local calculation when done kubios, for testing purpose
+                  "IBI_LOCAL": ppi,
+                  "RMSSD_LOCAL": rmssd,
+                  "SDNN_LOCAL": sdnn}
     except Exception as e:
         print_log(f"Kubios analysis failed: {e}")
         return False, None

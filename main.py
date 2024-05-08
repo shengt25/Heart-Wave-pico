@@ -1,3 +1,10 @@
+"""HeartWave Pico"""
+"""animation has to be the first, even before any imports, otherwise RAM will be full"""
+from resources.animation_power_on import play_power_on_animation
+
+play_power_on_animation()
+"""end of animation, resources of animation are freed inside the function"""
+
 from utils import GlobalSettings, load_settings
 from state_machine import StateMachine
 from save_system import check_home_dir

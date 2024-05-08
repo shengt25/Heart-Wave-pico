@@ -15,26 +15,6 @@ class MeasureResultCheck(State):
 
     def enter(self, args):
         ibi_list = args[0]
-
-        """start of animation"""
-        loading_circle = LoadingCircle()
-        ani_start_time = time.ticks_ms()
-        ani_refresh_time = time.ticks_ms()
-        ani_index = 0
-        self._display.text("loading", 35, 56, 1)
-        while time.ticks_ms() - ani_start_time < 1500:
-            if time.ticks_ms() - ani_refresh_time < 5:
-                continue
-            buf = framebuf.FrameBuffer(loading_circle.seq[ani_index], 32, 32, framebuf.MONO_VLSB)
-            self._display.blit(buf, 48, 20)
-            self._display.show()
-            ani_index = (ani_index + 1) % len(loading_circle.seq)
-            ani_refresh_time = time.ticks_ms()
-        # self._display.fill_rect(48, 20, 32, 32, 0)
-        loading_circle.free()
-        del loading_circle
-        """end of animation"""
-
         if len(ibi_list) > 10:
             # data ok, go to hrv or kubios
             if self._state_machine.current_module == self._state_machine.MODULE_HRV:
@@ -45,7 +25,6 @@ class MeasureResultCheck(State):
                 raise ValueError("Invalid module code")
             return
         else:
-            self._display.fill_rect(0, 14, 128, 50, 0)  # clear animation in MeasureResultCheck. ugly but works for now
             self._view.add_text(text="Not enough data", x=0, y=14, vid="text_check_error")
             self._listview_retry = self._view.add_list(items=["Try again", "Exit"], y=34)
             self._rotary_encoder.set_rotate_irq(items_count=2, position=0)
@@ -72,7 +51,26 @@ class HRVAnalysis(State):
 
     def enter(self, args):
         ibi_list = args[0]
+        """start of animation"""
+        loading_circle = LoadingCircle()
+        ani_start_time = time.ticks_ms()
+        ani_refresh_time = time.ticks_ms()
+        ani_index = 0
+        self._display.text("loading", 35, 56, 1)
+        while time.ticks_ms() - ani_start_time < 1500:
+            if time.ticks_ms() - ani_refresh_time < 5:
+                continue
+            buf = framebuf.FrameBuffer(loading_circle.seq[ani_index], 32, 32, framebuf.MONO_VLSB)
+            self._display.blit(buf, 48, 20)
+            self._display.show()
+            ani_index = (ani_index + 1) % len(loading_circle.seq)
+            ani_refresh_time = time.ticks_ms()
+        # self._display.fill_rect(48, 20, 32, 32, 0)
+        loading_circle.free()
+        del loading_circle
+        """end of animation"""
         hr, ppi, rmssd, sdnn = calculate_hrv(ibi_list)
+        self._display.fill_rect(0, 14, 128, 50, 0)  # clear animation in MeasureResultCheck. ugly but works for now
         # save data
         result = {"DATE": get_datetime(),
                   "HR": str(hr) + "BPM",
@@ -85,7 +83,6 @@ class HRVAnalysis(State):
         mqtt_success = self._state_machine.data_network.mqtt_publish(result)
         if not mqtt_success:
             show_items.extend(["---", "MQTT failed", "Check settings"])
-        self._display.fill_rect(0, 14, 128, 50, 0)  # clear animation in MeasureResultCheck. ugly but works for now
         self._state_machine.set(state_code=self._state_machine.STATE_SHOW_RESULT, args=[show_items])
 
     def loop(self):
@@ -101,7 +98,26 @@ class KubiosAnalysis(State):
     def enter(self, args):
         self._ibi_list = args[0]
         self._rotary_encoder.unset_button_irq()  # just in case user press button a lot while sending
+        """start of animation"""
+        loading_circle = LoadingCircle()
+        ani_start_time = time.ticks_ms()
+        ani_refresh_time = time.ticks_ms()
+        ani_index = 0
+        self._display.text("loading", 35, 56, 1)
+        while time.ticks_ms() - ani_start_time < 1500:
+            if time.ticks_ms() - ani_refresh_time < 5:
+                continue
+            buf = framebuf.FrameBuffer(loading_circle.seq[ani_index], 32, 32, framebuf.MONO_VLSB)
+            self._display.blit(buf, 48, 20)
+            self._display.show()
+            ani_index = (ani_index + 1) % len(loading_circle.seq)
+            ani_refresh_time = time.ticks_ms()
+        # self._display.fill_rect(48, 20, 32, 32, 0)
+        loading_circle.free()
+        del loading_circle
+        """end of animation"""
         kubios_success, result = get_kubios_analysis(self._ibi_list)
+        self._display.fill_rect(0, 14, 128, 50, 0)  # clear animation in MeasureResultCheck. ugly but works for now
         self._rotary_encoder.set_button_irq()  # resume after process done
         if kubios_success:
             # success, save and goto show result
@@ -116,7 +132,6 @@ class KubiosAnalysis(State):
         else:
             # failed, retry or show HRV result
             self._rotary_encoder.set_rotate_irq(items_count=2, position=0)
-            self._display.fill_rect(0, 14, 128, 50, 0)  # clear animation in MeasureResultCheck. ugly but works for now
             self._view.add_text(text="Failed sending", x=0, y=14, vid="text_kubios_failed")
             self._listview_retry = self._view.add_list(items=["Try again", "Show HRV result"], y=34)
 

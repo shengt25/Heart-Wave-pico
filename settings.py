@@ -1,6 +1,8 @@
 import time
 from utils import print_log, pico_stat, pico_rom_stat
 from state import State
+from resources.pic_loading_circle import LoadingCircle
+import framebuf
 
 
 class Settings(State):
@@ -12,7 +14,7 @@ class Settings(State):
 
     def enter(self, args):
         self._view.remove_all()  # clear screen
-        self._view.add_text(text="Settings", y=0, invert=True)
+        self._view.add_text(text="Settings", x=0, y=0, invert=True)
         self._listview_settings_list = self._view.add_list(items=["Back", "About", "Debug Info", "Connect Wi-Fi",
                                                                   "Connect MQTT", "???"], y=14)
         self._listview_settings_list.set_page(self._page)
@@ -51,7 +53,7 @@ class SettingsAbout(State):
 
     def enter(self, args):
         self._view.remove_all()  # clear screen
-        self._view.add_text(text="About", y=0, invert=True)
+        self._view.add_text(text="About", x=0, y=0, invert=True)
         show_items = ["[HeartWave Pico]",
                       "Sheng Tai", "Alex Pop", "Vitalii Virronen",
                       "Made by Group3"]
@@ -71,7 +73,7 @@ class SettingsDebugInfo(State):
 
     def enter(self, args):
         self._view.remove_all()  # clear screen
-        self._view.add_text(text="Debug Info", y=0, invert=True)
+        self._view.add_text(text="Debug Info", x=0, y=0, invert=True)
         # system info
         ram_used, ram_free, ram_total, storage_free = pico_stat()
         # network
@@ -122,25 +124,60 @@ class SettingsWifi(State):
         self._textview_info = None
         self._textview_ip = None
         self._last_check_time = 0
+        self._connecting = False
+
+        # for animation
+        self.ani_refresh_time = time.ticks_ms()
+        self.ani_index = 0
+        self.loading_circle = None
 
     def enter(self, args):
         self._view.remove_all()  # clear screen
-        self._view.add_text(text="Wi-Fi", y=0, invert=True)
-        self._textview_info = self._view.add_text(text="", y=14)
-        self._textview_ip = self._view.add_text(text="", y=24)
+        self._view.add_text(text="Wi-Fi", x=0, y=0, invert=True)
+        self._display.show()
+
+        self._textview_info = self._view.add_text(text="", x=0, y=14)
+        self._textview_ip = self._view.add_text(text="", x=0, y=24)
+        self._last_check_time = 0
+        self._connecting = False
+
+        # for animation
+        self.ani_refresh_time = time.ticks_ms()
+        self.ani_index = 0
+        self.loading_circle = None
+
+        if self._data_network.is_wlan_connected():
+            self._textview_info.set_text("Connected")
+            self._textview_ip.set_text(self._data_network.get_wlan_ip())
 
     def loop(self):
         if time.ticks_diff(time.ticks_ms(), self._last_check_time) > 1000:
             self._last_check_time = time.ticks_ms()
-            if self._data_network.is_wlan_connected():
-                wlan_status = "Connected"
-                wlan_ip = self._data_network.get_wlan_ip()
-            else:
-                wlan_status = "Connecting..."
-                wlan_ip = "IP: N/A"
+            if self._data_network.is_wlan_connected() and self._connecting:
+                self._connecting = False
+                self.loading_circle.free()
+                self.loading_circle = None
+                self._display.fill_rect(0, 20, 128, 44, 0)
+                self._textview_info.set_text("Connected")
+                self._textview_ip.set_text(self._data_network.get_wlan_ip())
+                return
+
+            if not self._data_network.is_wlan_connected() and not self._connecting:
+                self._connecting = True
+                self._textview_info.set_text("")
+                self._textview_ip.set_text("")
+                self.loading_circle = LoadingCircle()
+                self._display.text("Connecting", 24, 56, 1)
                 self._data_network.connect_wlan()
-            self._textview_info.set_text(wlan_status)
-            self._textview_ip.set_text(wlan_ip)
+
+        if self._connecting:
+            if time.ticks_ms() - self.ani_refresh_time > 5:
+                buf = framebuf.FrameBuffer(self.loading_circle.seq[self.ani_index], 32, 32, framebuf.MONO_VLSB)
+                self._display.blit(buf, 48, 20)
+                self._display.show()
+                self.ani_index = (self.ani_index + 1) % len(self.loading_circle.seq)
+                self.ani_refresh_time = time.ticks_ms()
+
         event = self._rotary_encoder.get_event()
         if event == self._rotary_encoder.EVENT_PRESS:
             self._view.remove_all()
@@ -155,9 +192,9 @@ class SettingsMqtt(State):
 
     def enter(self, args):
         self._view.remove_all()  # clear screen
-        self._view.add_text(text="MQTT", y=0, invert=True)
-        self._textview_info = self._view.add_text(text="", y=14)
-        self._textview_ip = self._view.add_text(text="", y=24)
+        self._view.add_text(text="MQTT", x=0, y=0, invert=True)
+        self._textview_info = self._view.add_text(text="", x=0, y=14)
+        self._textview_ip = self._view.add_text(text="", x=0, y=24)
         # try to connect at first run
         if not self._data_network.is_mqtt_connected():
             self._textview_info.set_text("Connecting...")
@@ -189,8 +226,8 @@ class SettingsDino(State):
 
     def enter(self, args):
         self._view.remove_all()  # clear screen
-        self._view.add_text(text="???", y=0, invert=True)
-        self._textview_info = self._view.add_text(text="Coming soon", y=14)
+        self._view.add_text(text="???", x=0, y=0, invert=True)
+        self._textview_info = self._view.add_text(text="Coming soon", x=0, y=14)
 
     def loop(self):
         event = self._rotary_encoder.get_event()

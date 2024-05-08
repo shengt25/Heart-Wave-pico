@@ -1,7 +1,8 @@
 from utils import print_log
 import time
 from state import State
-from data_processing import SlidingWindow, IBICalculator
+from data_processing import IBICalculator
+from data_structure import SlidingWindow
 
 
 class MeasureWait(State):
@@ -26,10 +27,10 @@ class MeasureWait(State):
         else:
             raise ValueError("Invalid module code")
         self._view.remove_all()  # clear screen
-        self._view.add_text(text="Put finger on ", y=14, vid="text_put_finger1")
-        self._view.add_text(text="sensor to start", y=24, vid="text_put_finger2")
-        self._view.add_text(text=heading_text, y=0, invert=True, vid="text_heading")  # 'invert' gives it a background
-        self._view.add_text(text=hr_text, y=64 - 8, vid="text_hr")
+        self._view.add_text(text="Put finger on ", x=0, y=14, vid="text_put_finger1")
+        self._view.add_text(text="sensor to start", x=0, y=24, vid="text_put_finger2")
+        self._view.add_text(text=heading_text, x=0, y=0, invert=True, vid="text_heading")  # 'invert' gives it a background
+        self._view.add_text(text=hr_text,x=0,  y=64 - 8, vid="text_hr")
 
     def loop(self):
         # check finger on sensor

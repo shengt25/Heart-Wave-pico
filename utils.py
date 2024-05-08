@@ -11,6 +11,7 @@ class GlobalSettings:
     files_limit = 1000
     wifi_ssid = ""
     wifi_password = ""
+    wifi_auto_connect = False
     mqtt_broker_ip = ""
     kubios_apikey = ""
     kubios_client_id = ""
@@ -51,6 +52,7 @@ def load_settings(filename):
             GlobalSettings.files_limit = settings["files_limit"]
             GlobalSettings.wifi_ssid = settings["wifi_ssid"]
             GlobalSettings.wifi_password = settings["wifi_password"]
+            GlobalSettings.wifi_auto_connect = settings["wifi_auto_connect"]
             GlobalSettings.mqtt_broker_ip = settings["mqtt_broker_ip"]
             GlobalSettings.kubios_apikey = settings["kubios_apikey"]
             GlobalSettings.kubios_client_id = settings["kubios_client_id"]

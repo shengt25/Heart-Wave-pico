@@ -69,20 +69,3 @@ def get_datetime():
     return datetime
 
 
-def dict2show_items(dict_data, show_datetime=False):
-    list_data = []
-    # history data: date time first
-    if show_datetime:
-        list_data = ["Date:" + str(dict_data["DATE"][:8]),
-                     "Time:" + str(dict_data["DATE"][9:17])]
-    # normal data: in the middle
-    list_data.extend(["HR:" + str(dict_data["HR"]),
-                      "IBI:" + str(dict_data["IBI"]),
-                      "RMSSD:" + str(dict_data["RMSSD"]),
-                      "SDNN:" + str(dict_data["SDNN"])])
-    # kubios data: at the end
-    if "SNS" in dict_data:
-        list_data.extend(["SNS:" + str(dict_data["SNS"]),
-                          "PNS:" + str(dict_data["PNS"]),
-                          "Stress:" + str(dict_data["STRESS"])])
-    return list_data

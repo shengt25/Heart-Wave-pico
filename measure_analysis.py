@@ -3,7 +3,7 @@ from utils import print_log, get_datetime, dict2show_items
 from save_system import save_system
 from state import State
 from data_processing import calculate_hrv, get_kubios_analysis
-from resources.loading import LoadingCircle
+from resources.pic_loading_circle import LoadingCircle
 import framebuf
 
 

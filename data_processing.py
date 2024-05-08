@@ -168,20 +168,20 @@ def calculate_hrv(IBI_list_raw):
 def get_kubios_analysis(ibi_list):
     """Return: tuple(success, response)"""
     # run gc.collect() to free up memory, otherwise the request might fail due to it probably using a lot of memory
+    gc.collect()
+    print_log(round((gc.mem_free() / 1024), 2))
     try:
         APIKEY = GlobalSettings.kubios_apikey
         CLIENT_ID = GlobalSettings.kubios_client_id
         CLIENT_SECRET = GlobalSettings.kubios_client_secret
         TOKEN_URL = "https://kubioscloud.auth.eu-west-1.amazoncognito.com/oauth2/token"
-        gc.collect()
         response = requests.post(url=TOKEN_URL, data='grant_type=client_credentials&client_id={}'.format(CLIENT_ID),
                                  headers={'Content-Type': 'application/x-www-form-urlencoded'},
                                  auth=(CLIENT_ID, CLIENT_SECRET))
-
+        gc.collect()
         response = response.json()  # Parse JSON response into a python dictionary
         access_token = response["access_token"]  # Parse access token
         dataset = {"type": "RRI", "data": ibi_list, "analysis": {"type": "readiness"}}
-        gc.collect()
         response = requests.post(url="https://analysis.kubioscloud.com/v2/analytics/analyze",
                                  headers={"Authorization": "Bearer {}".format(access_token), "X-Api-Key": APIKEY},
                                  json=dataset)

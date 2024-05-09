@@ -169,7 +169,7 @@ def get_kubios_analysis(ibi_list):
     """Return: tuple(success, response)"""
     # run gc.collect() to free up memory, otherwise the request might fail due to it probably using a lot of memory
     gc.collect()
-    print_log(round((gc.mem_free() / 1024), 2))
+    print_log("before kubios request"+str(round((gc.mem_free() / 1024), 2)))
     try:
         APIKEY = GlobalSettings.kubios_apikey
         CLIENT_ID = GlobalSettings.kubios_client_id
@@ -180,13 +180,14 @@ def get_kubios_analysis(ibi_list):
                                  auth=(CLIENT_ID, CLIENT_SECRET))
         gc.collect()
         response = response.json()  # Parse JSON response into a python dictionary
+        print_log("after first kubios request" + str(round((gc.mem_free() / 1024), 2)))
         access_token = response["access_token"]  # Parse access token
         dataset = {"type": "RRI", "data": ibi_list, "analysis": {"type": "readiness"}}
         response = requests.post(url="https://analysis.kubioscloud.com/v2/analytics/analyze",
                                  headers={"Authorization": "Bearer {}".format(access_token), "X-Api-Key": APIKEY},
                                  json=dataset)
         analysis = response.json()["analysis"]
-
+        print_log("after all kubios requests" + str(round((gc.mem_free() / 1024), 2)))
         # compare with local calculation when done kubios, for testing purpose
         hr, ppi, rmssd, sdnn = calculate_hrv(ibi_list)
         result = {"DATE": get_datetime(),

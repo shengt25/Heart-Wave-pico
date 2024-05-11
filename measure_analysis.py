@@ -27,7 +27,8 @@ class MeasureResultCheck(State):
         else:
             self._view.add_text(text="Not enough data", x=0, y=14, vid="text_check_error")
             self._listview_retry = self._view.add_list(items=["Try again", "Exit"], y=34)
-            self._rotary_encoder.set_rotate_irq(items_count=2, position=0)
+            self._rotary_encoder.enable_rotate(items_count=2, position=0)
+            self._rotary_encoder.enable_press()
 
     def loop(self):
         """if check not enough, then goes here"""
@@ -35,7 +36,7 @@ class MeasureResultCheck(State):
         if event == self._rotary_encoder.EVENT_ROTATE:
             self._listview_retry.set_selection(self._rotary_encoder.get_position())
         elif event == self._rotary_encoder.EVENT_PRESS:
-            self._rotary_encoder.unset_rotate_irq()
+            self._rotary_encoder.disable_rotate()
             self._view.remove_all()  # main menu needs to be re-created, wait measure also will re-create heading
             if self._rotary_encoder.get_position() == 0:
                 self._state_machine.set(state_code=self._state_machine.STATE_MEASURE_WAIT)
@@ -51,26 +52,26 @@ class HRVAnalysis(State):
 
     def enter(self, args):
         ibi_list = args[0]
-        """start of animation"""
+        """start of loading animation"""
+        # the animation now is actually a fake one. It does nothing but block the system for a while
+        # also, it is ugly implemented, the reason to do this is just for fun. at least for now.
         loading_circle = LoadingCircle()
         ani_start_time = time.ticks_ms()
         ani_refresh_time = time.ticks_ms()
         ani_index = 0
         self._display.text("loading", 35, 56, 1)
-        while time.ticks_ms() - ani_start_time < 1500:
-            if time.ticks_ms() - ani_refresh_time < 5:
-                continue
-            buf = framebuf.FrameBuffer(loading_circle.seq[ani_index], 32, 32, framebuf.MONO_VLSB)
-            self._display.blit(buf, 48, 20)
-            self._display.show()
-            ani_index = (ani_index + 1) % len(loading_circle.seq)
-            ani_refresh_time = time.ticks_ms()
-        # self._display.fill_rect(48, 20, 32, 32, 0)
+        while time.ticks_diff(time.ticks_ms(), ani_start_time) < 1000:
+            if time.ticks_diff(time.ticks_ms(), ani_refresh_time) > 5:
+                buf = framebuf.FrameBuffer(loading_circle.seq[ani_index], 32, 32, framebuf.MONO_VLSB)
+                self._display.blit(buf, 48, 20)
+                self._display.show()
+                ani_index = (ani_index + 1) % len(loading_circle.seq)
+                ani_refresh_time = time.ticks_ms()
         loading_circle.free()
         del loading_circle
-        """end of animation"""
+        """end of loading animation"""
         hr, ppi, rmssd, sdnn = calculate_hrv(ibi_list)
-        self._display.fill_rect(0, 14, 128, 50, 0)  # clear animation in MeasureResultCheck. ugly but works for now
+        self._display.fill_rect(0, 14, 128, 50, 0)  # clear animation in MeasureResultCheck.
         # save data
         result = {"DATE": get_datetime(),
                   "HR": str(hr) + "BPM",
@@ -82,8 +83,9 @@ class HRVAnalysis(State):
         # send to mqtt
         mqtt_success = self._state_machine.data_network.mqtt_publish(result)
         if not mqtt_success:
-            show_items.extend(["---", "MQTT failed", "Check settings"])
+            show_items.extend(["---", "MQTT not sent", "Please connect", "in settings"])
         self._state_machine.set(state_code=self._state_machine.STATE_SHOW_RESULT, args=[show_items])
+        self._rotary_encoder.enable_press()  # resume after process done
 
     def loop(self):
         return
@@ -97,28 +99,26 @@ class KubiosAnalysis(State):
 
     def enter(self, args):
         self._ibi_list = args[0]
-        self._rotary_encoder.unset_button_irq()  # just in case user press button a lot while sending
-        """start of animation"""
+        """start of loading animation"""
+        # the animation now is actually a fake one. It does nothing but block the system for a while
+        # also, it is ugly implemented, the reason to do this is just for fun. at least for now.
         loading_circle = LoadingCircle()
         ani_start_time = time.ticks_ms()
         ani_refresh_time = time.ticks_ms()
         ani_index = 0
         self._display.text("loading", 35, 56, 1)
-        while time.ticks_ms() - ani_start_time < 1500:
-            if time.ticks_ms() - ani_refresh_time < 5:
-                continue
-            buf = framebuf.FrameBuffer(loading_circle.seq[ani_index], 32, 32, framebuf.MONO_VLSB)
-            self._display.blit(buf, 48, 20)
-            self._display.show()
-            ani_index = (ani_index + 1) % len(loading_circle.seq)
-            ani_refresh_time = time.ticks_ms()
-        # self._display.fill_rect(48, 20, 32, 32, 0)
+        while time.ticks_diff(time.ticks_ms(), ani_start_time) < 1000:
+            if time.ticks_diff(time.ticks_ms(), ani_refresh_time) > 5:
+                buf = framebuf.FrameBuffer(loading_circle.seq[ani_index], 32, 32, framebuf.MONO_VLSB)
+                self._display.blit(buf, 48, 20)
+                self._display.show()
+                ani_index = (ani_index + 1) % len(loading_circle.seq)
+                ani_refresh_time = time.ticks_ms()
         loading_circle.free()
         del loading_circle
-        """end of animation"""
+        """end of loading animation"""
         kubios_success, result = get_kubios_analysis(self._ibi_list)
-        self._display.fill_rect(0, 14, 128, 50, 0)  # clear animation in MeasureResultCheck. ugly but works for now
-        self._rotary_encoder.set_button_irq()  # resume after process done
+        self._display.fill_rect(0, 14, 128, 50, 0)  # clear animation in MeasureResultCheck.
         if kubios_success:
             # success, save and goto show result
             save_system(result)
@@ -126,14 +126,16 @@ class KubiosAnalysis(State):
             # send to mqtt
             mqtt_success = self._state_machine.data_network.mqtt_publish(result)
             if not mqtt_success:
-                show_items.extend(["---", "MQTT failed", "Check settings"])
+                show_items.extend(["---", "MQTT not sent", "Please connect", "in settings"])
             self._state_machine.set(state_code=self._state_machine.STATE_SHOW_RESULT, args=[show_items])
             return
         else:
             # failed, retry or show HRV result
-            self._rotary_encoder.set_rotate_irq(items_count=2, position=0)
-            self._view.add_text(text="Failed sending", x=0, y=14, vid="text_kubios_failed")
-            self._listview_retry = self._view.add_list(items=["Try again", "Show HRV result"], y=34)
+            self._rotary_encoder.enable_rotate(items_count=2, position=0)
+            self._view.add_text(text="Failed, check", x=0, y=14, vid="text_kubios_failed1")
+            self._view.add_text(text="network or API", x=0, y=24, vid="text_kubios_failed2")
+            self._listview_retry = self._view.add_list(items=["Try again", "Show HRV result"], y=44)
+        self._rotary_encoder.enable_press()
 
     def loop(self):
         # send failed, retry or show HRV result
@@ -141,8 +143,9 @@ class KubiosAnalysis(State):
         if event == self._rotary_encoder.EVENT_ROTATE:
             self._listview_retry.set_selection(self._rotary_encoder.get_position())
         if event == self._rotary_encoder.EVENT_PRESS:
-            self._state_machine.rotary_encoder.unset_rotate_irq()
-            self._view.remove_by_id("text_kubios_failed")
+            self._state_machine.rotary_encoder.disable_rotate()
+            self._view.remove_by_id("text_kubios_failed1")
+            self._view.remove_by_id("text_kubios_failed2")
             self._view.remove(self._listview_retry)
             if self._rotary_encoder.get_position() == 0:
                 self._state_machine.set(state_code=self._state_machine.STATE_KUBIOS_ANALYSIS, args=[self._ibi_list])

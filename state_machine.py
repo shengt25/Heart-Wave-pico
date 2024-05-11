@@ -5,7 +5,7 @@ from main_menu import MainMenu
 from measure import MeasureWait, Measure
 from measure_analysis import MeasureResultCheck, HRVAnalysis, KubiosAnalysis
 from result import ShowHistory, ShowResult
-from settings import Settings, SettingsDebugInfo, SettingsWifi, SettingsMqtt, SettingsAbout, SettingsDino
+from settings import Settings, SettingsDebugInfo, SettingsWifi, SettingsMqtt, SettingsAbout
 
 
 class StateMachine:
@@ -30,7 +30,6 @@ class StateMachine:
     STATE_SETTINGS_WIFI = 16
     STATE_SETTINGS_MQTT = 17
     STATE_SETTINGS_ABOUT = 18
-    STATE_SETTINGS_DINO = 19
 
     # map the state code to each class
     state_dict = {STATE_MENU: MainMenu,
@@ -46,7 +45,6 @@ class StateMachine:
                   STATE_SETTINGS_WIFI: SettingsWifi,
                   STATE_SETTINGS_MQTT: SettingsMqtt,
                   STATE_SETTINGS_ABOUT: SettingsAbout,
-                  STATE_SETTINGS_DINO: SettingsDino
                   }
 
     def __init__(self):
@@ -84,6 +82,10 @@ class StateMachine:
 
     def run(self):
         if self._switched:
+            # disable all irq automatically in case of fifo overflow
+            self.heart_sensor.stop()
+            self.rotary_encoder.disable_press()
+            self.rotary_encoder.disable_rotate()
             self._switched = False
             self._state.enter(self._args)
             return

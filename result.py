@@ -25,7 +25,8 @@ class ShowHistory(State):
         self._listview_history_list.set_page(self._page)
         self._listview_history_list.set_selection(self._selection)
         # rotary encoder
-        self._rotary_encoder.set_rotate_irq(items_count=len(self._history_dates), position=self._selection)
+        self._rotary_encoder.enable_rotate(items_count=len(self._history_dates), position=self._selection)
+        self._rotary_encoder.enable_press()
 
     def loop(self):
         event = self._rotary_encoder.get_event()
@@ -40,14 +41,14 @@ class ShowHistory(State):
                 # set selection and page to 0
                 self._selection = 0
                 self._page = 0
-                self._rotary_encoder.unset_rotate_irq()
+                self._rotary_encoder.disable_rotate()
                 self._view.remove_all()
                 self._state_machine.set(state_code=self._state_machine.STATE_MENU)
             else:
                 # save selection and page
                 self._selection = self._rotary_encoder.get_position()
                 self._page = self._listview_history_list.get_page()
-                self._rotary_encoder.unset_rotate_irq()
+                self._rotary_encoder.disable_rotate()
                 self._view.remove(self._listview_history_list)
                 # set state to show data, and pass the data
                 data = load_history_data(self._history_dates[self._selection])
@@ -64,8 +65,9 @@ class ShowResult(State):
     def enter(self, args):
         show_items = args[0]
         self._listview_result = self._view.add_list(items=show_items, y=14, read_only=True)
+        self._rotary_encoder.enable_press()
         if self._listview_result.need_scrollbar():
-            self._rotary_encoder.set_rotate_irq(items_count=self._listview_result.get_page_max() + 1, position=0)
+            self._rotary_encoder.enable_rotate(items_count=self._listview_result.get_page_max() + 1, position=0)
 
     def loop(self):
         # keep watching rotary encoder press event
@@ -73,7 +75,7 @@ class ShowResult(State):
         if event == self._rotary_encoder.EVENT_ROTATE:
             self._listview_result.set_page(self._rotary_encoder.get_position())
         if event == self._rotary_encoder.EVENT_PRESS:
-            self._rotary_encoder.unset_rotate_irq()
+            self._rotary_encoder.disable_rotate()
             # from measurement, go to main menu
             if (self._state_machine.current_module == self._state_machine.MODULE_HRV or
                     self._state_machine.current_module == self._state_machine.MODULE_KUBIOS):

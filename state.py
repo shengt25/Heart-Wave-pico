@@ -2,13 +2,13 @@
 State is a base class for all states.
 
 Every state class must have the following methods:
-- enter: called when the state is entered
-- loop: called repeatedly until the state is changed
+- enter(): to initialize variables, set ui, set rotary encoder(press, rotate), etc. called when the state is entered
+- loop(): called repeatedly until the state is changed
 
 Setting next state:
 - To set the next state, call state_machine.set(state_code, args)
 - The state_code is defined in the StateMachine class, the data type is int
-- The args is a list of arguments to pass to the next state's enter method
+- The args is a list of arguments to pass to the next state. (to method enter())
 """
 
 

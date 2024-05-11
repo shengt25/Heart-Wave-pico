@@ -20,7 +20,7 @@
     ["state_machine.py", "http://localhost:8000/state_machine.py"],
     ["utils.py", "http://localhost:8000/utils.py"],
     ["view.py", "http://localhost:8000/view.py"],
-    ["settings.json", "http://localhost:8000/settings.json"],
+    ["config.json", "http://localhost:8000/config.json"],
 
     ["resources/animation_power_on.py", "http://localhost:8000/resources/animation_power_on.py"],
     ["resources/pic_icon.py", "http://localhost:8000/resources/pic_icon.py"],

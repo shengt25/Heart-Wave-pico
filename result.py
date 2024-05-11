@@ -21,7 +21,7 @@ class ShowHistory(State):
         self._history_dates.extend(files)
         # ui
         self._view.add_text(text="History", x=0, y=0, invert=True)
-        self._listview_history_list = self._view.add_list(items=self._history_dates, y=14, max_text_length=15)
+        self._listview_history_list = self._view.add_list(items=self._history_dates, y=14)
         self._listview_history_list.set_page(self._page)
         self._listview_history_list.set_selection(self._selection)
         # rotary encoder
@@ -93,7 +93,7 @@ def dict2show_items(dict_data, show_datetime=False):
     if show_datetime:
         list_data = ["Date:" + str(dict_data["DATE"][:8]),
                      "Time:" + str(dict_data["DATE"][9:17])]
-    # normal data: in the middle
+    # common data: in the middle
     list_data.extend(["HR:" + str(dict_data["HR"]),
                       "IBI:" + str(dict_data["IBI"]),
                       "RMSSD:" + str(dict_data["RMSSD"]),
@@ -103,13 +103,4 @@ def dict2show_items(dict_data, show_datetime=False):
         list_data.extend(["SNS:" + str(dict_data["SNS"]),
                           "PNS:" + str(dict_data["PNS"]),
                           "Stress:" + str(dict_data["STRESS"])])
-    # compare with local calculation when done kubios, for testing purpose
-    if "HR_LOCAL" in dict_data:
-        list_data.extend(["",
-                          "[local result]",
-                          "HR:" + str(dict_data["HR_LOCAL"]),
-                          "IBI:" + str(dict_data["IBI_LOCAL"]),
-                          "RMSSD:" + str(dict_data["RMSSD_LOCAL"]),
-                          "SDNN:" + str(dict_data["SDNN_LOCAL"])])
-
     return list_data

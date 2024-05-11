@@ -35,7 +35,8 @@ class MeasureWait(State):
     def loop(self):
         # check finger on sensor
         value = self._heart_sensor.read()
-        if value < self._start_threshold:
+        event = self._rotary_encoder.get_event()
+        if value < self._start_threshold or event == self._rotary_encoder.EVENT_PRESS:
             # keep heading and hr text, remove the rest
             self._view.remove_by_id("text_put_finger1")
             self._view.remove_by_id("text_put_finger2")
@@ -48,14 +49,6 @@ class MeasureWait(State):
             # Kubios -> HRV Measure (same state, but module code will distinguish)
             elif self._state_machine.current_module == self._state_machine.MODULE_KUBIOS:
                 self._state_machine.set(state_code=self._state_machine.STATE_MEASURE, args=[30])
-            return
-        # handle rotary encoder event: press
-        event = self._rotary_encoder.get_event()
-        if event == self._rotary_encoder.EVENT_PRESS:
-            # keep heading and hr text, remove the rest
-            self._view.remove_by_id("text_put_finger1")
-            self._view.remove_by_id("text_put_finger2")
-            self._state_machine.set(state_code=self._state_machine.STATE_MENU)
             return
 
 

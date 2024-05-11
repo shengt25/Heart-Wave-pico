@@ -24,10 +24,7 @@
 
     ["resources/animation_power_on.py", "http://localhost:8000/resources/animation_power_on.py"],
     ["resources/pic_icon.py", "http://localhost:8000/resources/pic_icon.py"],
-    ["resources/pic_loading_circle.py", "http://localhost:8000/resources/pic_loading_circle.py"],
-    ["resources/pic_power_on_heart.py", "http://localhost:8000/resources/pic_power_on_heart.py"],
-    ["resources/pic_power_on_heartwave.py", "http://localhost:8000/resources/pic_power_on_heartwave.py"],
-    ["resources/pic_power_on_pico.py", "http://localhost:8000/resources/pic_power_on_pico.py"]
+    ["resources/pic_loading_circle.py", "http://localhost:8000/resources/pic_loading_circle.py"]
   ],
   "deps": [
   ],

@@ -169,7 +169,7 @@ def get_kubios_analysis(ibi_list):
     """Return: tuple(success, response)"""
     # run gc.collect() to free up memory, otherwise the 'requests' might fail due to it probably using a lot of memory
     gc.collect()
-    print_log("before kubios request"+str(round((gc.mem_free() / 1024), 2)))
+    print_log("RAM before kubios request (KB): " + str(round((gc.mem_free() / 1024), 2)))
     try:
         APIKEY = GlobalSettings.kubios_apikey
         CLIENT_ID = GlobalSettings.kubios_client_id

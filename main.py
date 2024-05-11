@@ -19,10 +19,10 @@ from save_system import check_home_dir
 
 if __name__ == "__main__":
     # load settings:
-    load_settings("settings.json")
+    load_settings("config.json")
     GlobalSettings.print_log = False
     # init state machine
-    state_machine = StateMachine()
+    state_machine = StateMachine(heart_sensor_pin=26)
     # connect wlan
     if GlobalSettings.wifi_auto_connect:
         state_machine.data_network.connect_wlan()

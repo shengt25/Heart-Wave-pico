@@ -2030,18 +2030,21 @@ class PowerOnPico:
             0x00, 0x00, 0x00, 0x00
             # // font edit end
         ])
-        self.seq = [power_on_pico0, power_on_pico1, power_on_pico2, power_on_pico3, power_on_pico4, power_on_pico5,
-                    power_on_pico6, power_on_pico7, power_on_pico8, power_on_pico9, power_on_pico10, power_on_pico11,
-                    power_on_pico12, power_on_pico13, power_on_pico14, power_on_pico15, power_on_pico16, power_on_pico17,
-                    power_on_pico18, power_on_pico19, power_on_pico20, power_on_pico21, power_on_pico22, power_on_pico23,
-                    power_on_pico24, power_on_pico25, power_on_pico26, power_on_pico27, power_on_pico28, power_on_pico29,
-                    power_on_pico30, power_on_pico31, power_on_pico32, power_on_pico33, power_on_pico34, power_on_pico35,
-                    power_on_pico36, power_on_pico37, power_on_pico38, power_on_pico39, power_on_pico40, power_on_pico41,
-                    power_on_pico42, power_on_pico43, power_on_pico44, power_on_pico45, power_on_pico46, power_on_pico47,
-                    power_on_pico48, power_on_pico49, power_on_pico50, power_on_pico51, power_on_pico52, power_on_pico53,
-                    power_on_pico54, power_on_pico55, power_on_pico56, power_on_pico57]
+        self.seq = [power_on_pico0, power_on_pico1, power_on_pico2, power_on_pico3, power_on_pico4,
+                    power_on_pico5, power_on_pico6, power_on_pico7, power_on_pico8, power_on_pico9,
+                    power_on_pico10, power_on_pico11, power_on_pico12, power_on_pico13, power_on_pico14,
+                    power_on_pico15, power_on_pico16, power_on_pico17, power_on_pico18, power_on_pico19,
+                    power_on_pico20, power_on_pico21, power_on_pico22, power_on_pico23, power_on_pico24,
+                    power_on_pico25, power_on_pico26, power_on_pico27, power_on_pico28, power_on_pico29,
+                    power_on_pico30, power_on_pico31, power_on_pico32, power_on_pico33, power_on_pico34,
+                    power_on_pico35, power_on_pico36, power_on_pico37, power_on_pico38, power_on_pico39,
+                    power_on_pico40, power_on_pico41, power_on_pico42, power_on_pico43, power_on_pico44,
+                    power_on_pico45, power_on_pico46, power_on_pico47, power_on_pico48, power_on_pico49,
+                    power_on_pico50, power_on_pico51, power_on_pico52, power_on_pico53, power_on_pico54,
+                    power_on_pico55, power_on_pico56, power_on_pico57]
 
     def free(self):
         for i in range(len(self.seq)):
+            self.seq[0] = None
             del self.seq[0]
         del self.seq

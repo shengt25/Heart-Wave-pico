@@ -31,6 +31,7 @@ class MeasureWait(State):
         self._view.add_text(text="sensor to start", x=0, y=24, vid="text_put_finger2")
         self._view.add_text(text=heading_text, x=0, y=0, invert=True, vid="text_heading")  # 'invert' gives it a background
         self._view.add_text(text=hr_text,x=0,  y=64 - 8, vid="text_hr")
+        self._rotary_encoder.enable_press()
 
     def loop(self):
         # check finger on sensor
@@ -95,6 +96,7 @@ class Measure(State):
         # ui
         self._textview_hr = self._view.select_by_id("text_hr")  # assigned to self.xxx, avoid select_by_id in loop()
         self._graphview = self._view.add_graph(y=14, h=64 - 14 - 12)
+        self._rotary_encoder.enable_press()
         self._heart_sensor.start()  # start lastly to reduce the chance of data piling, maybe not needed
 
     def loop(self):

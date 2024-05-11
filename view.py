@@ -7,6 +7,8 @@ import os
 
 class View:
     def __init__(self, display):
+        """Args:
+        display: the display is the instance of SSD1306, to be used for rendering the views."""
         self._display = display
         self.width = display.width
         self.height = display.height
@@ -16,8 +18,8 @@ class View:
     def add_text(self, text, x, y, invert=False, invert_mode=1, vid=None):
         return self._add_view(TextView, vid, text, x, y, invert, invert_mode)
 
-    def add_list(self, items, y, spacing=2, max_text_length=16, read_only=False, vid=None):
-        return self._add_view(ListView, vid, items, y, spacing, max_text_length, read_only)
+    def add_list(self, items, y, spacing=2, read_only=False, vid=None):
+        return self._add_view(ListView, vid, items, y, spacing, read_only)
 
     def add_graph(self, y, h, speed=1, vid=None):
         return self._add_view(GraphView, vid, y, h, speed)
@@ -36,8 +38,8 @@ class View:
             raise ValueError("View not found")
         # remove from active views and add to inactive views
         type_str = self._active_views[vid].type
-        self._active_views[vid].clear()
-        self._active_views[vid].active = False
+        self._active_views[vid]._clear()
+        self._active_views[vid]._active = False
         if self._inactive_views[type_str] is None:
             self._inactive_views[type_str] = [self._active_views.pop(vid)]
         else:
@@ -80,7 +82,7 @@ class View:
             inactive_views = self._inactive_views[constructor.type]  # get inactive views from the list of the type
             view = inactive_views.pop()  # get one
             self._active_views[self._vid_checker(vid)] = view
-            view.reinit(*args, **kwargs)
+            view._reinit(*args, **kwargs)
             print_log(
                 f"View reused: {constructor.type}, active: {self._active_views}, inactive: {self._inactive_views}")
             return view
@@ -97,16 +99,19 @@ class View:
 
 
 class TextView:
-    """Text elements: set_text
-    when set invert,
-    invert_mode=1: invert background from the start of text to the end of the line, useful for heading text.
-    invert_mode=2: invert background within text only,"""
+    """The instantiation and maintenance should be handled by View class."""
     type = "text"
 
     def __init__(self, display, text, x, y, invert=False, invert_mode=1):
+        """Args:
+        text: the text to be displayed
+        x: x coordinate
+        y: y coordinate
+        invert: invert the text or not, default False
+        invert_mode: 1. invert background the whole line, useful for heading text. 2: invert background of text only."""
         self._display = display
-        self._font_height = display.FONT_HEIGHT
-        self.active = True
+        self._font_size = display.FONT_SIZE
+        self._active = True
         # param
         self._text = text
         self._x = x
@@ -116,14 +121,15 @@ class TextView:
         self._update_framebuffer()
 
     def set_text(self, text):
-        if not self.active:
+        """Set text to be displayed, will automatically clear the previous text"""
+        if not self._active:
             raise ValueError("Trying to set an inactive view component")
-        self.clear()
+        self._clear()
         self._text = text
         self._update_framebuffer()
 
-    def reinit(self, text, x, y, invert=False, invert_mode=1):
-        self.active = True
+    def _reinit(self, text, x, y, invert=False, invert_mode=1):
+        self._active = True
         self._text = text
         self._x = x
         self._y = y
@@ -131,24 +137,24 @@ class TextView:
         self._invert_mode = invert_mode
         self._update_framebuffer()
 
-    def clear(self):
+    def _clear(self):
         if self._invert:
             if self._invert_mode == 1:
-                self._display.fill_rect(self._x, self._y, self._display.width - self._x, self._font_height + 2, 0)
+                self._display.fill_rect(0, self._y, self._display.width, self._font_size + 2, 0)
             elif self._invert_mode == 2:
-                self._display.fill_rect(self._x, self._y, self._font_height * len(self._text), self._font_height + 2, 0)
+                self._display.fill_rect(self._x, self._y, self._font_size * len(self._text), self._font_size + 2, 0)
             else:
                 raise ValueError("Invalid invert mode")
         else:
-            self._display.fill_rect(self._x, self._y, self._font_height * len(self._text), self._font_height, 0)
+            self._display.fill_rect(self._x, self._y, self._font_size * len(self._text), self._font_size, 0)
         self._display.set_update()
 
     def _update_framebuffer(self):
         if self._invert:
             if self._invert_mode == 1:
-                self._display.fill_rect(self._x, self._y, self._display.width - self._x, self._font_height + 2, 1)
+                self._display.fill_rect(self._x, self._y, self._display.width - self._x, self._font_size + 2, 1)
             elif self._invert_mode == 2:
-                self._display.fill_rect(self._x, self._y, self._font_height * len(self._text), self._font_height + 2, 1)
+                self._display.fill_rect(self._x, self._y, self._font_size * len(self._text), self._font_size + 2, 1)
             else:
                 raise ValueError("Invalid invert mode")
             self._display.text(self._text, self._x, self._y + 1, 0)
@@ -158,21 +164,20 @@ class TextView:
 
 
 class ListView:
-    """List elements: set_items, set_selection, set_page.
-    get_page_max, get_page, get_selection_max.
+    """Methods: set_items, set_selection, set_page, get_page_max, get_page, get_selection_max.
     Note: current selection is got from rotary encoder get_position() method, which is absolute position
-    ListView don't have a current_selection attribute or method, it's managed by the caller(rotary encoder user)."""
+    ListView doesn't remember index of current selection, it should be managed by the caller."""
     type = "list"
     _arrow_top = array.array('H', [3, 0, 0, 5, 6, 5])  # coordinates array of the poly vertex
     _arrow_bottom = array.array('H', [0, 0, 6, 0, 3, 5])
 
-    def __init__(self, display, items, y, spacing=2, max_text_length=16, read_only=False):
+    def __init__(self, display, items, y, spacing=2, read_only=False):
         self._display = display
-        self._font_height = display.FONT_HEIGHT
-        self.active = True
+        self._font_size = display.FONT_SIZE
+        self._active = True
 
         self._page = 0
-        self._display_count = 0  # number of items WILL BE shown at once, not max possible number of items
+        self._display_count = 0  # number of items WILL BE shown on screen, not max possible number of items
         self._slider_height = 0
         self._show_scrollbar = False
         self._slider_min_height = 2
@@ -180,7 +185,6 @@ class ListView:
         self._items = items
         self._y = y
         self._spacing = spacing
-        self._max_text_length = max_text_length
         self._read_only = read_only
 
         self._scrollbar_top = self._y + 5 + 3  # 5 is height of arrow, 3 is margin between arrow and scrollbar
@@ -190,23 +194,28 @@ class ListView:
         self.set_items(items)
 
     def get_page(self):
+        """Get the current page index, starting from 0"""
         return self._page
 
     def get_page_max(self):
+        """Get the max page index, starting from 0"""
         return len(self._items) - self._display_count
 
     def get_selection_max(self):
+        """Get the max selection index, starting from 0"""
         return len(self._items) - 1
 
     def need_scrollbar(self):
+        """Return True if the list view needs a scrollbar, the caller can decide to set rotation irq of encoder"""
         return self._show_scrollbar
 
     def set_selection(self, index):
-        if not self.active:
+        """Handle by the caller, the caller can set the selection index by rotary encoder get_position() method."""
+        if not self._active:
             raise ValueError("Trying to set an inactive view component")
         if index < 0 or index > self.get_selection_max():
             raise ValueError("Invalid selection index")
-        self.clear()
+        self._clear()
         # update page start index
         if index < self._page:
             self._page = index
@@ -215,7 +224,10 @@ class ListView:
         self._update_framebuffer(index)
 
     def set_page(self, index):
-        if not self.active:
+        """Handle by the caller, useful when it needs to be scrolled to a specific page.
+         Also, in read-only mode, this should be set instead of set_selection.
+         Because in read-only mode there is no 'selection', but scrolling page to view items only."""
+        if not self._active:
             raise ValueError("Trying to set an inactive view component")
         if index < 0 or index > self.get_page_max():
             raise ValueError("Invalid page index")
@@ -223,15 +235,16 @@ class ListView:
         self.set_selection(self._page)
 
     def set_items(self, items):
-        if not self.active:
+        """Set items to be displayed, this will also set up everything"""
+        if not self._active:
             raise ValueError("Trying to set an inactive view component")
-        self.clear()
+        self._clear()
         self._items = items
         # get max display count at once
         available_height = self._display.height - self._y
-        item_height = self._font_height + self._spacing
+        item_height = self._font_size + self._spacing
         max_display_count = available_height // item_height
-        if available_height % item_height > self._font_height:
+        if available_height % item_height > self._font_size:
             max_display_count += 1
         print_log(f"List view item per page: {max_display_count}, total: {len(self._items)}")
 
@@ -247,19 +260,18 @@ class ListView:
         self._page = 0  # set view index to first item
         self.set_selection(0)
 
-    def reinit(self, items, y, spacing=2, max_text_length=16, read_only=False):
-        self.active = True
+    def _reinit(self, items, y, spacing=2, read_only=False):
+        self._active = True
         self._items = items
         self._read_only = read_only
         self._y = y
         self._spacing = spacing
-        self._max_text_length = max_text_length
 
         self._scrollbar_top = self._y + 5 + 3
         self._slider_top = self._scrollbar_top + 1  # offset 1 pixel from scrollbar outline
         self.set_items(items)
 
-    def clear(self):
+    def _clear(self):
         self._display.fill_rect(0, self._y, self._display.width, self._display.height - self._y, 0)
         self._display.set_update()
 
@@ -290,10 +302,11 @@ class ListView:
     def _update_framebuffer(self, selection):
         for i in range(self._page, self._page + self._display_count):
             print_log(f"List view showing: {i} / {len(self._items) - 1}")
-            text_y = self._y + (i - self._page) * (self._font_height + self._spacing)
+            text_y = self._y + (i - self._page) * (self._font_size + self._spacing)
             # truncate text if too long
             text = self._items[i]
-            max_text_length = self._max_text_length - 1 * (not self._read_only)  # regardless scroll bar for now
+            max_text_length = self._display.width // self._font_size - 1 * (
+                not self._read_only) - 1 * self._show_scrollbar
             if len(text) > max_text_length:
                 text = text[:max_text_length]
             # display text
@@ -316,7 +329,7 @@ class GraphView:
         self._display = display
         self._WIDTH = display.width
         self._HEIGHT = display.height
-        self.active = True
+        self._active = True
 
         self._last_x = -1
         self._last_y = -1
@@ -325,8 +338,8 @@ class GraphView:
         self._box_h = h
         self._speed = speed
 
-    def reinit(self, y, h, speed=1):
-        self.active = True
+    def _reinit(self, y, h, speed=1):
+        self._active = True
         self._last_x = -1
         self._last_y = -1
         self._x = 0
@@ -335,18 +348,21 @@ class GraphView:
         self._speed = speed
 
     def set_value(self, value, min_val, max_val):
-        if not self.active:
+        """Set value to be displayed, will automatically update the frame buffer with force=True.
+        That means the interval of updating should be handled by the caller,
+        so refresh rate of graph can be different from the screen."""
+        if not self._active:
             raise ValueError("Trying to set an inactive view component")
         self._update_framebuffer(value, min_val, max_val)
 
-    def clear(self):
+    def _clear(self):
         self._display.fill_rect(0, self._box_y, self._WIDTH, self._box_h, 0)
         self._display.set_update()
 
     def _clear_ahead(self):
         # if: within the box's width
         # else: exceed the box's width: clean the part inside box, take the rest at the start and clean it
-        clean_width = int(self._WIDTH / 4)
+        clean_width = int(self._WIDTH / 7)
         if self._x + clean_width < self._WIDTH:
             self._display.fill_rect(self._x + 1, self._box_y, clean_width, self._box_h, 0)
         else:
@@ -392,17 +408,17 @@ class MenuView:
 
     def __init__(self, display):
         self._display = display
-        self.active = True
+        self._active = True
 
     def set_selection(self, selection):
-        if not self.active:
+        if not self._active:
             raise ValueError("Trying to set an inactive view component")
         self._update_framebuffer(selection)
 
-    def reinit(self):
-        self.active = True
+    def _reinit(self):
+        self._active = True
 
-    def clear(self):
+    def _clear(self):
         self._display.fill(0)
         self._display.set_update()
 

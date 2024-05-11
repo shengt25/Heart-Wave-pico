@@ -1,0 +1,35 @@
+{
+  "urls": [
+    ["lib/fifo.py", "http://localhost:8000/pico-lib/fifo.py"],
+    ["lib/piotimer.py", "http://localhost:8000/pico-lib/piotimer.py"],
+    ["lib/ssd1306.mpy", "http://localhost:8000/pico-lib/ssd1306.mpy"],
+    ["lib/umqtt/simple.mpy", "http://localhost:8000/pico-lib/umqtt/simple.mpy"],
+
+    ["data_processing.py", "http://localhost:8000/data_processing.py"],
+    ["data_structure.py", "http://localhost:8000/data_structure.py"],
+    ["hardware.py", "http://localhost:8000/hardware.py"],
+    ["main.py", "http://localhost:8000/main.py"],
+    ["main_menu.py", "http://localhost:8000/main_menu.py"],
+    ["measure.py", "http://localhost:8000/measure.py"],
+    ["measure_analysis.py", "http://localhost:8000/measure_analysis.py"],
+    ["pico_network.py", "http://localhost:8000/pico_network.py"],
+    ["result.py", "http://localhost:8000/result.py"],
+    ["save_system.py", "http://localhost:8000/save_system.py"],
+    ["settings.py", "http://localhost:8000/settings.py"],
+    ["state.py", "http://localhost:8000/state.py"],
+    ["state_machine.py", "http://localhost:8000/state_machine.py"],
+    ["utils.py", "http://localhost:8000/utils.py"],
+    ["view.py", "http://localhost:8000/view.py"],
+    ["settings.json", "http://localhost:8000/settings.json"],
+
+    ["resources/animation_power_on.py", "http://localhost:8000/resources/animation_power_on.py"],
+    ["resources/pic_icon.py", "http://localhost:8000/resources/pic_icon.py"],
+    ["resources/pic_loading_circle.py", "http://localhost:8000/resources/pic_loading_circle.py"],
+    ["resources/pic_power_on_heart.py", "http://localhost:8000/resources/pic_power_on_heart.py"],
+    ["resources/pic_power_on_heartwave.py", "http://localhost:8000/resources/pic_power_on_heartwave.py"],
+    ["resources/pic_power_on_pico.py", "http://localhost:8000/resources/pic_power_on_pico.py"]
+  ],
+  "deps": [
+  ],
+  "version": "0.1"
+}

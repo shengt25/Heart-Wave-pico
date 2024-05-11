@@ -16,7 +16,8 @@ class MainMenu(State):
     def enter(self, args):
         self._view.remove_all()  # clear screen
         self._menu = self._view.add_menu()
-        self._rotary_encoder.set_rotate_irq(items_count=5, position=self._selection, loop_mode=False)
+        self._rotary_encoder.enable_rotate(items_count=5, position=self._selection, loop_mode=False)
+        self._rotary_encoder.enable_press()
         self._menu.set_selection(self._selection)  # resume selected index from last time
 
     def loop(self):
@@ -42,5 +43,5 @@ class MainMenu(State):
                 self._state_machine.set(self._state_machine.STATE_SETTINGS)
             else:
                 raise ValueError("Invalid selection index")
-            self._rotary_encoder.unset_rotate_irq()
+            self._rotary_encoder.disable_rotate()
             self._view.remove_all()

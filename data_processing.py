@@ -167,7 +167,7 @@ def calculate_hrv(IBI_list_raw):
 
 def get_kubios_analysis(ibi_list):
     """Return: tuple(success, response)"""
-    # run gc.collect() to free up memory, otherwise the request might fail due to it probably using a lot of memory
+    # run gc.collect() to free up memory, otherwise the 'requests' might fail due to it probably using a lot of memory
     gc.collect()
     print_log("before kubios request"+str(round((gc.mem_free() / 1024), 2)))
     try:
@@ -188,8 +188,6 @@ def get_kubios_analysis(ibi_list):
                                  json=dataset)
         analysis = response.json()["analysis"]
         print_log("after all kubios requests" + str(round((gc.mem_free() / 1024), 2)))
-        # compare with local calculation when done kubios, for testing purpose
-        hr, ppi, rmssd, sdnn = calculate_hrv(ibi_list)
         result = {"DATE": get_datetime(),
                   "HR": str(round(analysis["mean_hr_bpm"], 2)) + "BPM",
                   "IBI": str(round(analysis["mean_rr_ms"], 2)) + "ms",
@@ -197,11 +195,7 @@ def get_kubios_analysis(ibi_list):
                   "SDNN": str(round(analysis["sdnn_ms"], 2)) + "ms",
                   "SNS": str(round(analysis["sns_index"], 2)),
                   "PNS": str(round(analysis["pns_index"], 2)),
-                  "STRESS": str(round(analysis["stress_index"], 2)),
-                  "HR_LOCAL": hr,  # compare with local calculation when done kubios, for testing purpose
-                  "IBI_LOCAL": ppi,
-                  "RMSSD_LOCAL": rmssd,
-                  "SDNN_LOCAL": sdnn}
+                  "STRESS": str(round(analysis["stress_index"], 2))}
     except Exception as e:
         print_log(f"Kubios analysis failed: {e}")
         return False, None

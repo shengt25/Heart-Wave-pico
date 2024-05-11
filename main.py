@@ -1,11 +1,15 @@
 """HeartWave Pico"""
+
 """animation has to be the first, even before any imports, otherwise RAM will be full"""
 power_on_animation = True
 if power_on_animation:
-    from resources.animation_power_on import play_power_on_animation
     import gc
 
-    play_power_on_animation()
+    from resources.animation_power_on import PowerOnAnimation
+
+    power_on_animation = PowerOnAnimation()
+    power_on_animation.play()
+    del power_on_animation
     gc.collect()
 """end of animation, resources of animation are freed inside the function"""
 
@@ -15,10 +19,10 @@ from save_system import check_home_dir
 
 if __name__ == "__main__":
     # load settings:
-    load_settings("settings.json")
+    load_settings("config.json")
     GlobalSettings.print_log = False
     # init state machine
-    state_machine = StateMachine()
+    state_machine = StateMachine(heart_sensor_pin=26)
     # connect wlan
     if GlobalSettings.wifi_auto_connect:
         state_machine.data_network.connect_wlan()

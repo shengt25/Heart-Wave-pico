@@ -4,7 +4,7 @@ import json
 from umqtt.simple import MQTTClient
 
 
-class DataNetwork:
+class PicoNetwork:
     def __init__(self):
         self._wlan = network.WLAN(network.STA_IF)
         self._mqtt_client = MQTTClient("", GlobalSettings.mqtt_broker_ip)

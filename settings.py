@@ -131,9 +131,9 @@ class SettingsWifi(State):
         self._connecting = False
 
         # for animation
-        self.ani_refresh_time = time.ticks_ms()
-        self.ani_index = 0
-        self.loading_circle = None
+        self._animation_refresh_time = time.ticks_ms()
+        self._animation_index = 0
+        self._loading_circle = None
 
     def enter(self, args):
         self._view.remove_all()  # clear screen
@@ -146,9 +146,9 @@ class SettingsWifi(State):
         self._connecting = False
 
         # for animation
-        self.ani_refresh_time = time.ticks_ms()
-        self.ani_index = 0
-        self.loading_circle = None
+        self._animation_refresh_time = time.ticks_ms()
+        self._animation_index = 0
+        self._loading_circle = None
 
         if self._data_network.is_wlan_connected():
             self._textview_info.set_text("Connected")
@@ -161,8 +161,8 @@ class SettingsWifi(State):
             self._last_check_time = time.ticks_ms()
             if self._data_network.is_wlan_connected() and self._connecting:
                 self._connecting = False
-                self.loading_circle.free()
-                self.loading_circle = None
+                self._loading_circle.free()
+                del self._loading_circle
                 self._display.fill_rect(0, 20, 128, 44, 0)
                 self._textview_info.set_text("Connected")
                 self._textview_ip.set_text(self._data_network.get_wlan_ip())
@@ -173,22 +173,24 @@ class SettingsWifi(State):
                 self._connecting = True
                 self._textview_info.set_text("")
                 self._textview_ip.set_text("")
-                self.loading_circle = LoadingCircle()
+                self._loading_circle = LoadingCircle()
                 self._display.text("Connecting", 24, 56, 1)
                 self._data_network.connect_wlan()
 
         # display loading animation when connecting
         if self._connecting:
-            if time.ticks_ms() - self.ani_refresh_time > 5:
-                buf = framebuf.FrameBuffer(self.loading_circle.seq[self.ani_index], 32, 32, framebuf.MONO_VLSB)
+            if time.ticks_ms() - self._animation_refresh_time > 5:
+                buf = framebuf.FrameBuffer(self._loading_circle.seq[self._animation_index], 32, 32, framebuf.MONO_VLSB)
                 self._display.blit(buf, 48, 20)
                 self._display.show()
-                self.ani_index = (self.ani_index + 1) % len(self.loading_circle.seq)
-                self.ani_refresh_time = time.ticks_ms()
+                self._animation_index = (self._animation_index + 1) % len(self._loading_circle.seq)
+                self._animation_refresh_time = time.ticks_ms()
 
         event = self._rotary_encoder.get_event()
         if event == self._rotary_encoder.EVENT_PRESS:
             self._view.remove_all()
+            self._loading_circle.free()
+            del self._loading_circle
             self._state_machine.set(state_code=self._state_machine.STATE_SETTINGS)
 
 

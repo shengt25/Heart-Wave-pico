@@ -45,7 +45,7 @@ def pico_rom_stat():
 
 
 def load_settings(filename):
-    """Parse settings from settings.json file, saved as json format."""
+    """Parse settings from config file(*.json), saved as json format."""
     try:
         with open(filename, "r") as file:
             settings = json.load(file)
@@ -58,7 +58,7 @@ def load_settings(filename):
             GlobalSettings.kubios_client_id = settings["kubios_client_id"]
             GlobalSettings.kubios_client_secret = settings["kubios_client_secret"]
     except OSError:
-        raise OSError("settings.json not found in the root directory.")
+        raise OSError("config file not found in the root directory.")
 
 
 def get_datetime():

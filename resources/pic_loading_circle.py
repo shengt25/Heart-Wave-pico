@@ -571,5 +571,6 @@ class LoadingCircle:
 
     def free(self):
         for i in range(len(self.seq)):
+            self.seq[0] = None
             del self.seq[0]
         del self.seq

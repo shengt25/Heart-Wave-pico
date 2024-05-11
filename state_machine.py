@@ -1,6 +1,6 @@
 from hardware import Display, RotaryEncoder, HeartSensor
 from view import View
-from pico_network import DataNetwork
+from pico_network import PicoNetwork
 from main_menu import MainMenu
 from measure import MeasureWait, Measure
 from measure_analysis import MeasureResultCheck, HRVAnalysis, KubiosAnalysis
@@ -52,7 +52,7 @@ class StateMachine:
         self.rotary_encoder = RotaryEncoder(btn_debounce_ms=50)
         self.heart_sensor = HeartSensor(pin=26, sampling_rate=250)
         self.view = View(self.display)
-        self.data_network = DataNetwork()
+        self.data_network = PicoNetwork()
         self.current_module = self.MODULE_MENU
         self._args = None
         self._states = {}

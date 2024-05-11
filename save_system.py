@@ -1,6 +1,6 @@
 import os
 import json
-from utils import GlobalSettings
+from utils import GlobalSettings, pico_rom_stat
 
 
 def check_file_nr():
@@ -8,7 +8,8 @@ def check_file_nr():
     directory = GlobalSettings.save_directory + "/"
     files = os.listdir(directory)
     num_files = len(files)
-    if num_files > GlobalSettings.files_limit:
+    # also check storage space, if less than 10KB, delete the oldest file
+    if num_files > GlobalSettings.files_limit or pico_rom_stat() <= 10:
         files.sort()  # With current file names setting, the oldest file is the first file using the sort().
         os.remove(directory + files[0])
 

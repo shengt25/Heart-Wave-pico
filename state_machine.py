@@ -31,7 +31,7 @@ class StateMachine:
     STATE_SETTINGS_MQTT = 17
     STATE_SETTINGS_ABOUT = 18
 
-    # map the state code to each class
+    # map the state code to each class object
     state_dict = {STATE_MENU: MainMenu,
                   STATE_MEASURE_WAIT: MeasureWait,
                   STATE_MEASURE: Measure,
@@ -59,14 +59,14 @@ class StateMachine:
         self._state = None
         self._switched = False
 
-    def get_state(self, state_class):
-        if state_class not in self._states:
-            self._states[state_class] = state_class(self)  # pass self to state class, to give property access
-        return self._states[state_class]
+    def get_state(self, state_class_obj):
+        if state_class_obj not in self._states:
+            self._states[state_class_obj] = state_class_obj(self)  # pass self to state class, to give property access
+        return self._states[state_class_obj]
 
-    def preload_states(self, state_class_list):
-        for state_class in state_class_list:
-            self.get_state(state_class)
+    def preload_states(self):
+        for state_class_obj in self.state_dict.values():
+            self.get_state(state_class_obj)
 
     def set(self, state_code, args=None):
         # store additional arguments for the next state.enter()

@@ -119,10 +119,10 @@ class RotaryEncoder:
 
 
 class Display(SSD1306_I2C_):
+    FONT_SIZE = 8  # font size in pixel
     def __init__(self, width=128, height=64, scl=15, sda=14, refresh_rate=40):
         self.width = width
         self.height = height
-        self.FONT_HEIGHT = 8
         self._updated = False
         self._update_force = False  # force update once regardless of refresh rate
         self._last_update_time = 0

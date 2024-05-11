@@ -18,13 +18,20 @@ class HeartSensor:
         self._sampling_rate = sampling_rate
         self._timer = None
         self.sensor_fifo = Fifo(100, 'H')
+        self._started = False
 
     def start(self):
+        if self._started:
+            return
         self._timer = Piotimer(freq=self._sampling_rate, callback=self._sensor_handler)
+        self._started = True
 
     def stop(self):
+        if not self._started:
+            return
         self._timer.deinit()
         self.sensor_fifo.clear()
+        self._started = False
 
     def get_sampling_rate(self):
         return self._sampling_rate
@@ -35,8 +42,7 @@ class HeartSensor:
 
     def _sensor_handler(self, tid):
         # The sensor actually only has 14-bit resolution, but the ADC is set to 16-bit,
-        # so the value is shifted right by 2 to get the 14-bit value,
-        # to save memory and reduce calculation
+        # so the value is shifted right by 2 to get the 14-bit value to reduce calculation
         value = self._adc.read_u16() >> 2
         self.sensor_fifo.put(value)
 
@@ -62,20 +68,20 @@ class RotaryEncoder:
 
     """public methods"""
 
-    def set_rotate_irq(self, items_count, position=0, loop_mode=False):
+    def enable_rotate(self, items_count, position=0, loop_mode=False):
         """Set irq, max index, current position, and whether loop back at limit, or stop."""
         self._items_count = items_count
         self._loop_mode = loop_mode
         self._position = position
         self._dt.irq(trigger=Pin.IRQ_RISING, handler=self._rotate_handler, hard=True)
 
-    def unset_rotate_irq(self):
+    def disable_rotate(self):
         self._dt.irq(handler=None)
 
-    def set_button_irq(self):
+    def enable_press(self):
         self._button.irq(trigger=Pin.IRQ_RISING, handler=self._press_handler, hard=True)
 
-    def unset_button_irq(self):
+    def disable_press(self):
         self._button.irq(handler=None)
 
     def get_position(self):
@@ -120,6 +126,7 @@ class RotaryEncoder:
 
 class Display(SSD1306_I2C_):
     FONT_SIZE = 8  # font size in pixel
+
     def __init__(self, width=128, height=64, scl=15, sda=14, refresh_rate=40):
         self.width = width
         self.height = height

@@ -189,8 +189,6 @@ class SettingsWifi(State):
         event = self._rotary_encoder.get_event()
         if event == self._rotary_encoder.EVENT_PRESS:
             self._view.remove_all()
-            self._loading_circle.free()
-            del self._loading_circle
             self._state_machine.set(state_code=self._state_machine.STATE_SETTINGS)
 
 

@@ -43,8 +43,7 @@ class HeartSensor:
     def _sensor_handler(self, tid):
         # The sensor actually only has 14-bit resolution, but the ADC is set to 16-bit,
         # so the value is shifted right by 2 to get the 14-bit value to reduce calculation
-        value = self._adc.read_u16() >> 2
-        self.sensor_fifo.put(value)
+        self.sensor_fifo.put(self._adc.read_u16() >> 2)
 
 
 class RotaryEncoder:

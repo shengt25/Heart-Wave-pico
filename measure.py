@@ -2,7 +2,6 @@ from utils import print_log
 import time
 from state import State
 from data_processing import IBICalculator
-from data_structure import SlidingWindow
 
 
 class MeasureWait(State):
@@ -29,8 +28,8 @@ class MeasureWait(State):
         self._view.remove_all()  # clear screen
         self._view.add_text(text="Put finger on ", x=0, y=14, vid="text_put_finger1")
         self._view.add_text(text="sensor to start", x=0, y=24, vid="text_put_finger2")
-        self._view.add_text(text=heading_text, x=0, y=0, invert=True, vid="text_heading")  # 'invert' gives it a background
-        self._view.add_text(text=hr_text,x=0,  y=64 - 8, vid="text_hr")
+        self._view.add_text(text=heading_text, x=0, y=0, invert=True, vid="text_heading")
+        self._view.add_text(text=hr_text, x=0, y=64 - 8, vid="text_hr")
         self._rotary_encoder.enable_press()
 
     def loop(self):
@@ -64,9 +63,7 @@ class Measure(State):
     def __init__(self, state_machine):
         super().__init__(state_machine)
         # data processing
-        self._sliding_window = SlidingWindow(size=int(self._heart_sensor.get_sampling_rate() * 1.5))
-        self._ibi_calculator = IBICalculator(self._heart_sensor.sensor_fifo, self._heart_sensor.get_sampling_rate(),
-                                             self._sliding_window)
+        self._ibi_calculator = IBICalculator(self._heart_sensor.sensor_fifo, self._heart_sensor.get_sampling_rate())
         self._ibi_fifo = self._ibi_calculator.ibi_fifo  # ref of ibi_fifo
         # data
         self._hr_show_list = []
@@ -140,15 +137,12 @@ class Measure(State):
                                         args=[self._ibi_list])
                 return
 
-        # maximum update interval 20ms, and skip when fifo piling
+        # set maximum update interval, and skip when sensor fifo reaches 10 to avoid data piling
         if (time.ticks_diff(time.ticks_ms(), self._last_graph_update_time) > self._graph_update_interval and
                 self._heart_sensor.sensor_fifo.count() < 10):
             self._last_graph_update_time = time.ticks_ms()
-            value = self._heart_sensor.read()
-            min_val = self._sliding_window.get_min() if self._sliding_window.get_min() is not None else 0
-            max_val = self._sliding_window.get_max() if self._sliding_window.get_max() is not None else 0
-            self._graphview.set_value(value, min_val, max_val)
-
+            self._graphview.set_value(self._heart_sensor.read(),
+                                      self._ibi_calculator.get_window_min(), self._ibi_calculator.get_window_max())
         # keep watching rotary encoder press event
         event = self._rotary_encoder.get_event()
         if event == self._rotary_encoder.EVENT_PRESS:

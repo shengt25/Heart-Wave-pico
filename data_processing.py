@@ -3,17 +3,19 @@ from math import sqrt
 import urequests as requests
 from data_structure import Fifo
 import gc
+from data_structure import SlidingWindow
 
 
 class IBICalculator:
-    def __init__(self, sensor_fifo, sampling_rate, sliding_window, min_hr=40, max_hr=180):
+    def __init__(self, sensor_fifo, sampling_rate, min_hr=40, max_hr=180):
         # data store and output
         self.ibi_fifo = Fifo(20, 'H')
         # hardware
         self._sensor_fifo = sensor_fifo
         # init parameters
         self._sampling_rate = sampling_rate
-        self._sliding_window = sliding_window
+        self._sliding_window = SlidingWindow(size=int(sampling_rate * 1.5))
+
         self._max_ibi = 60 / min_hr * 1000
         self._min_ibi = 60 / max_hr * 1000
         # data
@@ -43,6 +45,18 @@ class IBICalculator:
 
     def run(self):
         self._state()
+
+    def get_window_min(self):
+        min_val = self._sliding_window.get_min()
+        if self._sliding_window.get_min() is None:
+            return 0
+        return min_val
+
+    def get_window_max(self):
+        max_val = self._sliding_window.get_max()
+        if self._sliding_window.get_max() is None:
+            return 0
+        return max_val
 
     """private methods"""
 

@@ -282,9 +282,7 @@ def dino(display, rotary_encoder):
                 display.show()
             elif press_count == 3:
                 display.text("See you...", 40, 44, 1)
-                display.show()
-            elif press_count == 4:
                 display.text("soon...", 40, 54, 1)
                 display.show()
-            elif press_count == 5:
+            elif press_count == 4:
                 break

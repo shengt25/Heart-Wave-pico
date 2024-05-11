@@ -2,6 +2,13 @@ import framebuf
 
 
 class LoadingCircle:
+    _instance = None
+
+    def __new__(cls):
+        if not cls._instance:
+            cls._instance = super(LoadingCircle, cls).__new__(cls)
+        return cls._instance
+
     def __init__(self):
         loading0 = bytearray([
             # // font edit begin : monovlsb : 32 : 32 : 32
@@ -569,8 +576,8 @@ class LoadingCircle:
                     loading17, loading18, loading19, loading20, loading21, loading22, loading23,
                     loading24, loading25, loading26, loading27]
 
-    def free(self):
-        for i in range(len(self.seq)):
-            self.seq[0] = None
-            del self.seq[0]
-        del self.seq
+    # def free(self):
+    #     for i in range(len(self.seq)):
+    #         self.seq[0] = None
+    #         del self.seq[0]
+    #     del self.seq

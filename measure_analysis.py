@@ -67,11 +67,9 @@ class HRVAnalysis(State):
                 self._display.show()
                 ani_index = (ani_index + 1) % len(loading_circle.seq)
                 ani_refresh_time = time.ticks_ms()
-        loading_circle.free()
-        del loading_circle
         """end of loading animation"""
         hr, ppi, rmssd, sdnn = calculate_hrv(ibi_list)
-        self._display.fill_rect(0, 14, 128, 50, 0)  # clear animation in MeasureResultCheck.
+        self._display.fill_rect(0, 14, 128, 50, 0)  # clear loading animation
         # save data
         result = {"DATE": get_datetime(),
                   "HR": str(hr) + "BPM",
@@ -114,11 +112,9 @@ class KubiosAnalysis(State):
                 self._display.show()
                 ani_index = (ani_index + 1) % len(loading_circle.seq)
                 ani_refresh_time = time.ticks_ms()
-        loading_circle.free()
-        del loading_circle
         """end of loading animation"""
         kubios_success, result = get_kubios_analysis(self._ibi_list)
-        self._display.fill_rect(0, 14, 128, 50, 0)  # clear animation in MeasureResultCheck.
+        self._display.fill_rect(0, 14, 128, 50, 0)  # clear loading animation
         if kubios_success:
             # success, save and goto show result
             save_system(result)

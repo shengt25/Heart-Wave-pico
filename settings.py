@@ -133,7 +133,7 @@ class SettingsWifi(State):
         # for animation
         self._animation_refresh_time = time.ticks_ms()
         self._animation_index = 0
-        self._loading_circle = None
+        self._loading_circle = LoadingCircle()
 
     def enter(self, args):
         self._view.remove_all()  # clear screen
@@ -148,7 +148,6 @@ class SettingsWifi(State):
         # for animation
         self._animation_refresh_time = time.ticks_ms()
         self._animation_index = 0
-        self._loading_circle = None
 
         if self._data_network.is_wlan_connected():
             self._textview_info.set_text("Connected")
@@ -161,8 +160,6 @@ class SettingsWifi(State):
             self._last_check_time = time.ticks_ms()
             if self._data_network.is_wlan_connected() and self._connecting:
                 self._connecting = False
-                self._loading_circle.free()
-                del self._loading_circle
                 self._display.fill_rect(0, 20, 128, 44, 0)
                 self._textview_info.set_text("Connected")
                 self._textview_ip.set_text(self._data_network.get_wlan_ip())
@@ -173,7 +170,6 @@ class SettingsWifi(State):
                 self._connecting = True
                 self._textview_info.set_text("")
                 self._textview_ip.set_text("")
-                self._loading_circle = LoadingCircle()
                 self._display.text("Connecting", 24, 56, 1)
                 self._data_network.connect_wlan()
 

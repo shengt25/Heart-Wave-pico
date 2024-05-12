@@ -19,3 +19,6 @@ cd Heart-Wave-pico && ./install.sh
 ```
 7. Restart the Raspberry Pi Pico W and it should be ready to use.
 
+# Note
+By default, MQTT will not be connected on startup, because if it will block the whole system for about 15 seconds
+if the broker is not available. You can connect it manually in the settings menu.

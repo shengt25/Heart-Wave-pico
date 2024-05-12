@@ -4,6 +4,7 @@ import urequests as requests
 from data_structure import Fifo
 import gc
 from data_structure import SlidingWindow
+import random
 
 
 class IBICalculator:
@@ -183,7 +184,11 @@ def get_kubios_analysis(ibi_list):
     """Return: tuple(success, response)"""
     # run gc.collect() to free up memory, otherwise the 'requests' might fail due to it probably using a lot of memory
     gc.collect()
-    print_log("RAM before kubios request (KB): " + str(round((gc.mem_free() / 1024), 2)))
+    print_log("RAM before garbage: " + str(round((gc.mem_free() / 1024), 2)) + " KB")
+    amount = random.randint(10, 30)
+    garbage = [i for i in range(amount)]
+    print_log("RAM after garbage: " + str(round((gc.mem_free() / 1024), 2)) + " KB")
+    print_log("RAM before kubios request: " + str(round((gc.mem_free() / 1024), 2)) + " KB")
     try:
         APIKEY = GlobalSettings.kubios_apikey
         CLIENT_ID = GlobalSettings.kubios_client_id
@@ -194,14 +199,14 @@ def get_kubios_analysis(ibi_list):
                                  auth=(CLIENT_ID, CLIENT_SECRET))
         gc.collect()
         response = response.json()  # Parse JSON response into a python dictionary
-        print_log("after first kubios request" + str(round((gc.mem_free() / 1024), 2)))
+        print_log("RAM after the first kubios request: " + str(round((gc.mem_free() / 1024), 2)) + " KB")
         access_token = response["access_token"]  # Parse access token
         dataset = {"type": "RRI", "data": ibi_list, "analysis": {"type": "readiness"}}
         response = requests.post(url="https://analysis.kubioscloud.com/v2/analytics/analyze",
                                  headers={"Authorization": "Bearer {}".format(access_token), "X-Api-Key": APIKEY},
                                  json=dataset)
         analysis = response.json()["analysis"]
-        print_log("after all kubios requests" + str(round((gc.mem_free() / 1024), 2)))
+        print_log("RAM after the second kubios request: " + str(round((gc.mem_free() / 1024), 2)) + " KB")
         result = {"DATE": get_datetime(),
                   "HR": str(round(analysis["mean_hr_bpm"], 2)) + "BPM",
                   "IBI": str(round(analysis["mean_rr_ms"], 2)) + "ms",
@@ -212,5 +217,7 @@ def get_kubios_analysis(ibi_list):
                   "STRESS": str(round(analysis["stress_index"], 2))}
     except Exception as e:
         print_log(f"Kubios analysis failed: {e}")
+        del garbage
         return False, None
+    del garbage
     return True, result

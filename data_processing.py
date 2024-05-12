@@ -64,7 +64,7 @@ class IBICalculator:
         """Get the value at the center of the window in fifo history, and calculate the threshold"""
         self._sliding_window.push(self._sensor_fifo.get())
         threshold = self._sliding_window.get_average() + (
-                self._sliding_window.get_max() - self._sliding_window.get_min()) * 0.4
+                self._sliding_window.get_max() - self._sliding_window.get_min()) * 0.3
         value = self._sliding_window.get_mid_index_value()
         return value, threshold
 
